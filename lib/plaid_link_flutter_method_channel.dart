@@ -50,6 +50,35 @@ class MethodChannelPlaidLinkFlutter extends PlaidLinkFlutterPlatform {
   }
 
   @override
+  Stream<LinkSuccess> embeddedSuccessEvents(int viewId) {
+    return _embeddedEvents(
+      'embeddedSuccess',
+      viewId,
+    ).map((event) => LinkSuccess.fromMap(event.payload()));
+  }
+
+  @override
+  Stream<LinkExit> embeddedExitEvents(int viewId) {
+    return _embeddedEvents(
+      'embeddedExit',
+      viewId,
+    ).map((event) => LinkExit.fromMap(event.payload()));
+  }
+
+  @override
+  Stream<LinkEvent> embeddedLinkEvents(int viewId) {
+    return _embeddedEvents(
+      'embeddedEvent',
+      viewId,
+    ).map((event) => LinkEvent.fromMap(event.payload()));
+  }
+
+  @override
+  Stream<void> embeddedLoadEvents(int viewId) {
+    return _embeddedEvents('embeddedLoad', viewId).map((_) {});
+  }
+
+  @override
   Future<String?> getSdkVersion() {
     return methodChannel.invokeMethod<String>('getSdkVersion');
   }
@@ -65,6 +94,50 @@ class MethodChannelPlaidLinkFlutter extends PlaidLinkFlutterPlatform {
   Future<void> openLinkSession(bool fullScreen) {
     return methodChannel.invokeMethod<void>('openLinkSession', {
       'fullScreen': fullScreen,
+    });
+  }
+
+  @override
+  Future<void> createPlaidLayerSession(String token) {
+    return methodChannel.invokeMethod<void>('createPlaidLayerSession', {
+      'token': token,
+    });
+  }
+
+  @override
+  Future<void> openLayerSession() {
+    return methodChannel.invokeMethod<void>('openLayerSession');
+  }
+
+  @override
+  Future<void> submitLayerData(SubmissionData data) {
+    return methodChannel.invokeMethod<void>('submitLayerData', data.toMap());
+  }
+
+  @override
+  Future<void> createPlaidHeadlessSession(String token) {
+    return methodChannel.invokeMethod<void>('createPlaidHeadlessSession', {
+      'token': token,
+    });
+  }
+
+  @override
+  Future<void> startHeadlessSession() {
+    return methodChannel.invokeMethod<void>('startHeadlessSession');
+  }
+
+  @override
+  Future<void> syncFinanceKit(FinanceKitConfiguration config) async {
+    try {
+      await methodChannel.invokeMethod<void>('syncFinanceKit', config.toMap());
+    } on PlatformException catch (error) {
+      throw FinanceKitException.fromPlatformException(error);
+    }
+  }
+
+  Stream<Map<Object?, Object?>> _embeddedEvents(String type, int viewId) {
+    return _nativeEvents.where((event) {
+      return event['type'] == type && event['viewId'] == viewId;
     });
   }
 }

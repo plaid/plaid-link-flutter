@@ -1,10 +1,20 @@
 package com.plaid.plaid_link_flutter
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
+import android.view.View
+import android.widget.FrameLayout
+import com.plaid.link.OnLinkContinuation
 import com.plaid.link.OnLoadCallback
 import com.plaid.link.Plaid
+import com.plaid.link.PlaidHeadlessSession
+import com.plaid.link.PlaidLayerSession
 import com.plaid.link.PlaidLinkSession
+import com.plaid.link.PlaidSession
+import com.plaid.link.SubmissionData
+import com.plaid.link.configuration.EmbeddedLinkTokenConfiguration
+import com.plaid.link.configuration.LayerTokenConfiguration
 import com.plaid.link.configuration.LinkTokenConfiguration
 import com.plaid.link.event.LinkEvent
 import com.plaid.link.event.LinkEventMetadata
@@ -13,6 +23,7 @@ import com.plaid.link.result.LinkError
 import com.plaid.link.result.LinkExit
 import com.plaid.link.result.LinkExitMetadata
 import com.plaid.link.result.LinkInstitution
+import com.plaid.link.result.LinkResult
 import com.plaid.link.result.LinkSuccess
 import com.plaid.link.result.LinkSuccessMetadata
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -24,6 +35,9 @@ import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
 import io.flutter.plugin.common.PluginRegistry
+import io.flutter.plugin.common.StandardMessageCodec
+import io.flutter.plugin.platform.PlatformView
+import io.flutter.plugin.platform.PlatformViewFactory
 
 class PlaidLinkFlutterPlugin :
   FlutterPlugin,
@@ -37,6 +51,9 @@ class PlaidLinkFlutterPlugin :
   private var activity: Activity? = null
   private var activityBinding: ActivityPluginBinding? = null
   private var linkSession: PlaidLinkSession? = null
+  private var layerSession: PlaidLayerSession? = null
+  private var headlessSession: PlaidHeadlessSession? = null
+  private var activeSession: PlaidSession? = null
   private var sessionCreationError: Throwable? = null
 
   override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
@@ -44,6 +61,10 @@ class PlaidLinkFlutterPlugin :
     methodChannel.setMethodCallHandler(this)
     eventChannel = EventChannel(binding.binaryMessenger, "plaid_link_flutter/events")
     eventChannel.setStreamHandler(this)
+    binding.platformViewRegistry.registerViewFactory(
+      "plaid_link_flutter/embedded_search",
+      PlaidEmbeddedSearchViewFactory(::sendEmbeddedEvent, { activity }),
+    )
   }
 
   override fun onMethodCall(call: MethodCall, result: Result) {
@@ -51,6 +72,13 @@ class PlaidLinkFlutterPlugin :
       "getSdkVersion" -> result.success(Plaid.VERSION_NAME)
       "createPlaidLinkSession" -> createPlaidLinkSession(call, result)
       "openLinkSession" -> openLinkSession(result)
+      "createPlaidLayerSession" -> createPlaidLayerSession(call, result)
+      "openLayerSession" -> openLayerSession(result)
+      "submitLayerData" -> submitLayerData(call, result)
+      "createPlaidHeadlessSession" -> createPlaidHeadlessSession(call, result)
+      "startHeadlessSession" -> startHeadlessSession(result)
+      "syncFinanceKit" ->
+        result.error("UNSUPPORTED_ANDROID", "FinanceKit is only available on iOS", null)
       else -> result.notImplemented()
     }
   }
@@ -90,12 +118,14 @@ class PlaidLinkFlutterPlugin :
 
     when (val plaidResult = Plaid.parseResult(Plaid.LINK_REQUEST_CODE, resultCode, data)) {
       is LinkSuccess -> {
+        PlaidEmbeddedResultDispatcher.dispatch(plaidResult)
         sendEvent("success", plaidResult.toWritableMap())
-        linkSession = null
+        clearActiveSession()
       }
       is LinkExit -> {
+        PlaidEmbeddedResultDispatcher.dispatch(plaidResult)
         sendEvent("exit", plaidResult.toWritableMap())
-        linkSession = null
+        clearActiveSession()
       }
       null -> Unit
     }
@@ -130,6 +160,7 @@ class PlaidLinkFlutterPlugin :
           .onLoad(OnLoadCallback { result.success(null) })
           .build()
       linkSession = Plaid.createPlaidLinkSession(currentActivity, config)
+      activeSession = linkSession
       sessionCreationError = null
     } catch (error: Throwable) {
       sessionCreationError = error
@@ -142,9 +173,102 @@ class PlaidLinkFlutterPlugin :
   }
 
   private fun openLinkSession(result: Result) {
-    val session = linkSession
+    openSession(linkSession, "createPlaidLinkSession was not called.", result)
+  }
+
+  private fun createPlaidLayerSession(call: MethodCall, result: Result) {
+    val token = call.argument<String>("token")
+    if (token.isNullOrBlank()) {
+      result.error("INVALID_TOKEN", "A link token is required.", null)
+      return
+    }
+    val currentActivity = activity
+    if (currentActivity == null) {
+      result.error("PLAID_NO_ACTIVITY", "Could not find current activity.", null)
+      return
+    }
+
+    try {
+      Plaid.setLinkEventListener { event ->
+        sendEvent("event", event.toWritableMap())
+      }
+      val config = LayerTokenConfiguration.Builder().token(token).build()
+      layerSession = Plaid.createPlaidLayerSession(currentActivity, config)
+      activeSession = layerSession
+      sessionCreationError = null
+      result.success(null)
+    } catch (error: Throwable) {
+      sessionCreationError = error
+      result.error(
+        "LAYER_SESSION_CREATE_ERROR",
+        error.message ?: "Failed to create Layer session.",
+        null,
+      )
+    }
+  }
+
+  private fun openLayerSession(result: Result) {
+    openSession(layerSession, "createPlaidLayerSession was not called.", result)
+  }
+
+  private fun submitLayerData(call: MethodCall, result: Result) {
+    val session = layerSession
     if (session == null) {
-      sendCreationExit("createPlaidLinkSession was not called.")
+      result.error("PLAID_NO_LAYER_SESSION", "Layer session not found. Call createPlaidLayerSession first.", null)
+      return
+    }
+
+    session.submit(
+      SubmissionData(
+        phoneNumber = call.argument<String>("phoneNumber"),
+        dateOfBirth = call.argument<String>("dateOfBirth"),
+        params = call.argument<Map<String, String>>("params"),
+      ),
+    )
+    result.success(null)
+  }
+
+  private fun createPlaidHeadlessSession(call: MethodCall, result: Result) {
+    val token = call.argument<String>("token")
+    if (token.isNullOrBlank()) {
+      result.error("INVALID_TOKEN", "A link token is required.", null)
+      return
+    }
+    val currentActivity = activity
+    if (currentActivity == null) {
+      result.error("PLAID_NO_ACTIVITY", "Could not find current activity.", null)
+      return
+    }
+
+    try {
+      Plaid.setLinkEventListener { event ->
+        sendEvent("event", event.toWritableMap())
+      }
+      val config =
+        LinkTokenConfiguration.Builder()
+          .token(token)
+          .onLoad(OnLoadCallback { result.success(null) })
+          .build()
+      headlessSession = Plaid.createPlaidHeadlessSession(currentActivity, config)
+      activeSession = headlessSession
+      sessionCreationError = null
+    } catch (error: Throwable) {
+      sessionCreationError = error
+      result.error(
+        "HEADLESS_SESSION_CREATE_ERROR",
+        error.message ?: "Failed to create Headless session.",
+        null,
+      )
+    }
+  }
+
+  private fun startHeadlessSession(result: Result) {
+    openSession(headlessSession, "createPlaidHeadlessSession was not called.", result)
+  }
+
+  private fun openSession(session: PlaidSession?, missingSessionMessage: String, result: Result) {
+    if (session == null) {
+      sendCreationExit(missingSessionMessage)
       result.success(null)
       return
     }
@@ -156,11 +280,21 @@ class PlaidLinkFlutterPlugin :
     }
 
     try {
+      activeSession = session
       session.open(currentActivity)
       result.success(null)
     } catch (error: Throwable) {
       result.error("PLAID_OPEN_ERROR", error.message ?: "Failed to open Plaid session.", null)
     }
+  }
+
+  private fun clearActiveSession() {
+    when (activeSession) {
+      linkSession -> linkSession = null
+      layerSession -> layerSession = null
+      headlessSession -> headlessSession = null
+    }
+    activeSession = null
   }
 
   private fun sendCreationExit(defaultMessage: String) {
@@ -185,6 +319,105 @@ class PlaidLinkFlutterPlugin :
     activity?.runOnUiThread {
       eventSink?.success(mapOf("type" to type, "payload" to payload))
     }
+  }
+
+  private fun sendEmbeddedEvent(viewId: Int, type: String, payload: Map<String, Any>) {
+    activity?.runOnUiThread {
+      eventSink?.success(mapOf("type" to type, "viewId" to viewId, "payload" to payload))
+    }
+  }
+}
+
+private class PlaidEmbeddedSearchViewFactory(
+  private val sendEmbeddedEvent: (Int, String, Map<String, Any>) -> Unit,
+  private val activityProvider: () -> Activity?,
+) : PlatformViewFactory(StandardMessageCodec.INSTANCE) {
+  override fun create(context: Context, viewId: Int, args: Any?): PlatformView {
+    val params = args as? Map<*, *> ?: emptyMap<Any, Any>()
+    return PlaidEmbeddedSearchPlatformView(
+      context = context,
+      viewId = viewId,
+      token = params["token"] as? String ?: "",
+      sendEmbeddedEvent = sendEmbeddedEvent,
+      activityProvider = activityProvider,
+    )
+  }
+}
+
+private class PlaidEmbeddedSearchPlatformView(
+  context: Context,
+  private val viewId: Int,
+  token: String,
+  private val sendEmbeddedEvent: (Int, String, Map<String, Any>) -> Unit,
+  private val activityProvider: () -> Activity?,
+) : PlatformView {
+  private val container = FrameLayout(context)
+  private val resultHandler: (LinkResult) -> Unit = ::handleResult
+
+  init {
+    if (token.isNotBlank()) {
+      Plaid.setLinkEventListener { event ->
+        sendEmbeddedEvent(viewId, "embeddedEvent", event.toWritableMap())
+      }
+
+      val config =
+        EmbeddedLinkTokenConfiguration.Builder()
+          .token(token)
+          .onEmbeddedViewExit { exit ->
+            sendEmbeddedEvent(viewId, "embeddedExit", exit.toWritableMap())
+          }
+          .build()
+
+      val embeddedView =
+        Plaid.createPlaidEmbeddedLinkView(
+          context,
+          config,
+          OnLinkContinuation { session ->
+            val activity = activityProvider() ?: return@OnLinkContinuation
+            session.open(activity)
+          },
+        )
+
+      container.addView(
+        embeddedView,
+        FrameLayout.LayoutParams(
+          FrameLayout.LayoutParams.MATCH_PARENT,
+          FrameLayout.LayoutParams.MATCH_PARENT,
+        ),
+      )
+      PlaidEmbeddedResultDispatcher.register(resultHandler)
+      sendEmbeddedEvent(viewId, "embeddedLoad", emptyMap())
+    }
+  }
+
+  override fun getView(): View = container
+
+  override fun dispose() {
+    PlaidEmbeddedResultDispatcher.unregister(resultHandler)
+    container.removeAllViews()
+  }
+
+  private fun handleResult(result: LinkResult) {
+    when (result) {
+      is LinkSuccess -> sendEmbeddedEvent(viewId, "embeddedSuccess", result.toWritableMap())
+      is LinkExit -> sendEmbeddedEvent(viewId, "embeddedExit", result.toWritableMap())
+    }
+  }
+}
+
+private object PlaidEmbeddedResultDispatcher {
+  private val handlers = mutableSetOf<(LinkResult) -> Unit>()
+
+  fun register(handler: (LinkResult) -> Unit) {
+    handlers.add(handler)
+  }
+
+  fun unregister(handler: (LinkResult) -> Unit) {
+    handlers.remove(handler)
+  }
+
+  fun dispatch(result: LinkResult) {
+    handlers.toList().forEach { it(result) }
   }
 }
 

@@ -2,7 +2,7 @@
 
 Official Flutter plugin for Plaid Link.
 
-This first implementation supports regular Link sessions with the same session-shaped API as the React Native SDK:
+This implementation supports the React Native SDK's session-shaped Link API:
 
 ```dart
 final session = await createPlaidLinkSession(
@@ -23,6 +23,33 @@ final session = await createPlaidLinkSession(
 await session.open();
 ```
 
+Layer, Headless, Embedded Search, and FinanceKit use the same public names:
+
+```dart
+final layerSession = await createPlaidLayerSession(
+  LayerTokenConfiguration(
+    token: layerToken,
+    onSuccess: (_) {},
+  ),
+);
+
+await layerSession.open();
+await layerSession.submit(const SubmissionData(phoneNumber: '+15551234567'));
+
+final headlessSession = await createPlaidHeadlessSession(
+  LinkTokenConfiguration(
+    token: linkToken,
+    onSuccess: (_) {},
+    onExit: (_) {},
+    onEvent: (_) {},
+  ),
+);
+
+await headlessSession.start();
+
+await syncFinanceKit(FinanceKitConfiguration(token: linkToken));
+```
+
 ## Native SDKs
 
 - iOS: LinkKit `7.0.1`, vendored at `ios/Frameworks/LinkKit.xcframework`
@@ -39,14 +66,16 @@ The vendored iOS framework intentionally contains only iOS device and simulator 
 
 ## Example App
 
-The example app mirrors the React Native example visually for the regular Link session flow:
+The example app mirrors the React Native example visually and includes screens
+for regular Link, Layer, Headless, Embedded Search, and FinanceKit:
 
 ```sh
 cd example
 flutter run
 ```
 
-Paste a `link_token`, create a Link session, then open Link. The app displays success, exit, and event callback results.
+Paste a `link_token`, create a session, then open or start the selected flow.
+The app displays success, exit, and event callback results.
 
 ## Current Scope
 
@@ -54,13 +83,14 @@ Implemented:
 
 - `createPlaidLinkSession`
 - `PlaidLinkSession.open([bool fullScreen = false])`
-- `PlaidLink.sdkVersion`
-- Success, exit, and event payload parsing
-- iOS and Android native regular Link sessions
-
-Planned follow-ups:
-
 - `createPlaidLayerSession`
+- `PlaidLayerSession.open()`
+- `PlaidLayerSession.submit(SubmissionData data)`
 - `createPlaidHeadlessSession`
+- `PlaidHeadlessSession.start()`
 - `syncFinanceKit`
 - `PlaidEmbeddedSearchView`
+- `PlaidLink.sdkVersion`
+- Success, exit, and event payload parsing
+- iOS and Android native regular Link, Layer, Headless, and Embedded Search
+- iOS native FinanceKit sync; Android returns a FinanceKit unsupported error
