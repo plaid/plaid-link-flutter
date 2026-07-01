@@ -99,7 +99,10 @@ jobs:
             exit 1
           fi
 
+          set +o pipefail
           yes | "$SDKMANAGER" --licenses
+          set -o pipefail
+
           "$SDKMANAGER" "platforms;android-36" "ndk;27.0.12077973"
 
       - name: Build example APK
