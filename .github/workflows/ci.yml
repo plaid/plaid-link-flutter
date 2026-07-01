@@ -88,8 +88,19 @@ jobs:
 
       - name: Install Android packages
         run: |
-          yes | sdkmanager --licenses
-          sdkmanager "platforms;android-36" "ndk;27.0.12077973"
+          set -euo pipefail
+
+          SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          if [[ ! -x "$SDKMANAGER" ]]; then
+            SDKMANAGER="$(find "$ANDROID_HOME" -path "*/bin/sdkmanager" -type f | head -n 1)"
+          fi
+          if [[ -z "$SDKMANAGER" || ! -x "$SDKMANAGER" ]]; then
+            echo "sdkmanager not found under ANDROID_HOME=$ANDROID_HOME"
+            exit 1
+          fi
+
+          yes | "$SDKMANAGER" --licenses
+          "$SDKMANAGER" "platforms;android-36" "ndk;27.0.12077973"
 
       - name: Build example APK
         working-directory: example
