@@ -29,6 +29,24 @@ abstract class PlaidLinkFlutterPlatform extends PlatformInterface {
     throw UnimplementedError('onEvent has not been implemented.');
   }
 
+  Stream<LinkSuccess> embeddedSuccessEvents(int viewId) {
+    throw UnimplementedError(
+      'embeddedSuccessEvents() has not been implemented.',
+    );
+  }
+
+  Stream<LinkExit> embeddedExitEvents(int viewId) {
+    throw UnimplementedError('embeddedExitEvents() has not been implemented.');
+  }
+
+  Stream<LinkEvent> embeddedLinkEvents(int viewId) {
+    throw UnimplementedError('embeddedLinkEvents() has not been implemented.');
+  }
+
+  Stream<void> embeddedLoadEvents(int viewId) {
+    throw UnimplementedError('embeddedLoadEvents() has not been implemented.');
+  }
+
   Future<String?> getSdkVersion() {
     throw UnimplementedError('getSdkVersion() has not been implemented.');
   }
@@ -41,5 +59,35 @@ abstract class PlaidLinkFlutterPlatform extends PlatformInterface {
 
   Future<void> openLinkSession(bool fullScreen) {
     throw UnimplementedError('openLinkSession() has not been implemented.');
+  }
+
+  Future<void> createPlaidLayerSession(String token) {
+    throw UnimplementedError(
+      'createPlaidLayerSession() has not been implemented.',
+    );
+  }
+
+  Future<void> openLayerSession() {
+    throw UnimplementedError('openLayerSession() has not been implemented.');
+  }
+
+  Future<void> submitLayerData(SubmissionData data) {
+    throw UnimplementedError('submitLayerData() has not been implemented.');
+  }
+
+  Future<void> createPlaidHeadlessSession(String token) {
+    throw UnimplementedError(
+      'createPlaidHeadlessSession() has not been implemented.',
+    );
+  }
+
+  Future<void> startHeadlessSession() {
+    throw UnimplementedError(
+      'startHeadlessSession() has not been implemented.',
+    );
+  }
+
+  Future<void> syncFinanceKit(FinanceKitConfiguration config) {
+    throw UnimplementedError('syncFinanceKit() has not been implemented.');
   }
 }

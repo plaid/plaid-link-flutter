@@ -241,6 +241,97 @@ class LinkAccount {
   final String? verificationStatus;
 }
 
+class SubmissionData {
+  const SubmissionData({this.phoneNumber, this.dateOfBirth, this.params});
+
+  final String? phoneNumber;
+  final String? dateOfBirth;
+  final Map<String, String>? params;
+
+  Map<String, Object?> toMap() {
+    return <String, Object?>{
+      'phoneNumber': phoneNumber,
+      'dateOfBirth': dateOfBirth,
+      'params': params,
+    };
+  }
+}
+
+class FinanceKitConfiguration {
+  const FinanceKitConfiguration({
+    required this.token,
+    this.requestAuthorizationIfNeeded = true,
+    this.syncBehavior = FinanceKitSyncBehavior.live,
+  });
+
+  final String token;
+  final bool requestAuthorizationIfNeeded;
+  final FinanceKitSyncBehavior syncBehavior;
+
+  Map<String, Object?> toMap() {
+    return <String, Object?>{
+      'token': token,
+      'requestAuthorizationIfNeeded': requestAuthorizationIfNeeded,
+      'syncBehavior': syncBehavior.value,
+    };
+  }
+}
+
+enum FinanceKitSyncBehavior {
+  live(0),
+  simulated(1);
+
+  const FinanceKitSyncBehavior(this.value);
+
+  final int value;
+}
+
+enum FinanceKitErrorType {
+  invalidToken(0),
+  permissionError(1),
+  linkApiError(2),
+  permissionAccessError(3),
+  unknown(4);
+
+  const FinanceKitErrorType(this.value);
+
+  factory FinanceKitErrorType.fromCode(String code) {
+    return switch (code) {
+      'INVALID_TOKEN' => FinanceKitErrorType.invalidToken,
+      'PERMISSION_ERROR' => FinanceKitErrorType.permissionError,
+      'LINK_API_ERROR' => FinanceKitErrorType.linkApiError,
+      'PERMISSION_ACCESS_ERROR' => FinanceKitErrorType.permissionAccessError,
+      _ => FinanceKitErrorType.unknown,
+    };
+  }
+
+  final int value;
+}
+
+class FinanceKitException implements Exception {
+  const FinanceKitException({
+    required this.type,
+    required this.code,
+    required this.message,
+  });
+
+  factory FinanceKitException.fromPlatformException(dynamic error) {
+    final code = error.code?.toString() ?? 'UNKNOWN';
+    return FinanceKitException(
+      type: FinanceKitErrorType.fromCode(code),
+      code: code,
+      message: error.message?.toString() ?? 'FinanceKit sync failed.',
+    );
+  }
+
+  final FinanceKitErrorType type;
+  final String code;
+  final String message;
+
+  @override
+  String toString() => 'FinanceKitException($code): $message';
+}
+
 extension _Let<T extends Object> on T {
   R let<R>(R Function(T value) transform) => transform(this);
 }

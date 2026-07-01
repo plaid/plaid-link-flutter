@@ -5,6 +5,8 @@ import UIKit
 public class PlaidLinkFlutterPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
   private var eventSink: FlutterEventSink?
   private var linkSession: PlaidLinkSession?
+  private var layerSession: PlaidLayerSession?
+  private var headlessSession: (any PlaidHeadlessSession)?
   private var sessionCreationError: Error?
 
   public static func register(with registrar: FlutterPluginRegistrar) {
@@ -17,8 +19,12 @@ public class PlaidLinkFlutterPlugin: NSObject, FlutterPlugin, FlutterStreamHandl
       binaryMessenger: registrar.messenger()
     )
     let instance = PlaidLinkFlutterPlugin()
-    registrar.addMethodCallDelegate(instance, channel: methodChannel)
     eventChannel.setStreamHandler(instance)
+    registrar.addMethodCallDelegate(instance, channel: methodChannel)
+    registrar.register(
+      PlaidEmbeddedSearchViewFactory(sendEmbeddedEvent: instance.sendEmbeddedEvent),
+      withId: "plaid_link_flutter/embedded_search"
+    )
   }
 
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
@@ -29,6 +35,18 @@ public class PlaidLinkFlutterPlugin: NSObject, FlutterPlugin, FlutterStreamHandl
       createPlaidLinkSession(call, result: result)
     case "openLinkSession":
       openLinkSession(call, result: result)
+    case "createPlaidLayerSession":
+      createPlaidLayerSession(call, result: result)
+    case "openLayerSession":
+      openLayerSession(result: result)
+    case "submitLayerData":
+      submitLayerData(call, result: result)
+    case "createPlaidHeadlessSession":
+      createPlaidHeadlessSession(call, result: result)
+    case "startHeadlessSession":
+      startHeadlessSession(result: result)
+    case "syncFinanceKit":
+      syncFinanceKit(call, result: result)
     default:
       result(FlutterMethodNotImplemented)
     }
@@ -100,6 +118,106 @@ public class PlaidLinkFlutterPlugin: NSObject, FlutterPlugin, FlutterStreamHandl
     }
   }
 
+  private func createPlaidLayerSession(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+    guard
+      let arguments = call.arguments as? [String: Any],
+      let token = arguments["token"] as? String,
+      !token.isEmpty
+    else {
+      result(FlutterError(code: "INVALID_TOKEN", message: "A link token is required.", details: nil))
+      return
+    }
+
+    let onSuccess: OnSuccessHandler = { [weak self] success in
+      self?.sendEvent(type: "success", payload: success.asDictionary)
+      self?.layerSession = nil
+    }
+
+    let onExit: OnExitHandler = { [weak self] exit in
+      self?.sendEvent(type: "exit", payload: exit.asDictionary)
+      self?.layerSession = nil
+    }
+
+    let onEvent: OnEventHandler = { [weak self] event in
+      self?.sendEvent(type: "event", payload: event.asDictionary)
+    }
+
+    let configuration = LayerTokenConfiguration(
+      token: token,
+      onSuccess: onSuccess,
+      onExit: onExit,
+      onEvent: onEvent
+    )
+
+    do {
+      layerSession = try Plaid.createPlaidLayerSession(configuration: configuration)
+      sessionCreationError = nil
+      result(nil)
+    } catch {
+      sessionCreationError = error
+      result(
+        FlutterError(
+          code: "LAYER_SESSION_CREATE_ERROR",
+          message: error.localizedDescription,
+          details: nil
+        )
+      )
+    }
+  }
+
+  private func createPlaidHeadlessSession(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+    guard
+      let arguments = call.arguments as? [String: Any],
+      let token = arguments["token"] as? String,
+      !token.isEmpty
+    else {
+      result(FlutterError(code: "INVALID_TOKEN", message: "A link token is required.", details: nil))
+      return
+    }
+
+    let onSuccess: OnSuccessHandler = { [weak self] success in
+      self?.sendEvent(type: "success", payload: success.asDictionary)
+      self?.headlessSession = nil
+    }
+
+    let onExit: OnExitHandler = { [weak self] exit in
+      self?.sendEvent(type: "exit", payload: exit.asDictionary)
+      self?.headlessSession = nil
+    }
+
+    let onEvent: OnEventHandler = { [weak self] event in
+      self?.sendEvent(type: "event", payload: event.asDictionary)
+    }
+
+    let onLoad: OnLoadHandler = {
+      DispatchQueue.main.async {
+        result(nil)
+      }
+    }
+
+    let configuration = LinkTokenConfiguration(
+      token: token,
+      onSuccess: onSuccess,
+      onExit: onExit,
+      onEvent: onEvent,
+      onLoad: onLoad
+    )
+
+    do {
+      headlessSession = try Plaid.createHeadlessSession(configuration: configuration)
+      sessionCreationError = nil
+    } catch {
+      sessionCreationError = error
+      result(
+        FlutterError(
+          code: "HEADLESS_SESSION_CREATE_ERROR",
+          message: error.localizedDescription,
+          details: nil
+        )
+      )
+    }
+  }
+
   private func openLinkSession(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
     guard let session = linkSession else {
       sendCreationExit(defaultMessage: "createPlaidLinkSession was not called.")
@@ -133,6 +251,110 @@ public class PlaidLinkFlutterPlugin: NSObject, FlutterPlugin, FlutterStreamHandl
     }
   }
 
+  private func openLayerSession(result: @escaping FlutterResult) {
+    guard let session = layerSession else {
+      sendCreationExit(defaultMessage: "createPlaidLayerSession was not called.")
+      result(nil)
+      return
+    }
+
+    guard let viewController = UIApplication.shared.plaidTopViewController() else {
+      result(FlutterError(code: "PLAID_NO_VC", message: "Could not find current view controller.", details: nil))
+      return
+    }
+
+    DispatchQueue.main.async {
+      session.open(using: .viewController(viewController))
+      result(nil)
+    }
+  }
+
+  private func submitLayerData(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+    guard let session = layerSession else {
+      result(
+        FlutterError(
+          code: "PLAID_NO_LAYER_SESSION",
+          message: "Layer session not found. Call createPlaidLayerSession first.",
+          details: nil
+        )
+      )
+      return
+    }
+
+    let arguments = call.arguments as? [String: Any]
+    let data = LayerSubmissionData(
+      phoneNumber: arguments?["phoneNumber"] as? String,
+      dateOfBirth: arguments?["dateOfBirth"] as? String,
+      params: arguments?["params"] as? [String: String]
+    )
+
+    DispatchQueue.main.async {
+      session.submit(data: data)
+      result(nil)
+    }
+  }
+
+  private func startHeadlessSession(result: @escaping FlutterResult) {
+    guard let session = headlessSession else {
+      sendCreationExit(defaultMessage: "createPlaidHeadlessSession was not called.")
+      result(nil)
+      return
+    }
+
+    DispatchQueue.main.async {
+      session.start()
+      result(nil)
+    }
+  }
+
+  private func syncFinanceKit(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+    guard
+      let arguments = call.arguments as? [String: Any],
+      let token = arguments["token"] as? String,
+      !token.isEmpty
+    else {
+      result(FlutterError(code: "INVALID_TOKEN", message: "A link token is required.", details: nil))
+      return
+    }
+
+    let requestAuthorizationIfNeeded =
+      arguments["requestAuthorizationIfNeeded"] as? Bool ?? true
+    let syncBehavior = arguments["syncBehavior"] as? Int ?? 0
+
+    if #available(iOS 17.4, *) {
+      let behavior: PlaidFinanceKit.SyncBehavior = syncBehavior == 0 ? .live : .simulated
+      PlaidFinanceKit.sync(
+        token: token,
+        requestAuthorizationIfNeeded: requestAuthorizationIfNeeded,
+        syncBehavior: behavior
+      ) { syncResult in
+        DispatchQueue.main.async {
+          switch syncResult {
+          case .success:
+            result(nil)
+          case .failure(let error):
+            let details = error.asFinanceKitErrorDictionary
+            result(
+              FlutterError(
+                code: details["errorCode"] as? String ?? "FINANCE_KIT_ERROR",
+                message: details["errorMessage"] as? String ?? error.localizedDescription,
+                details: details
+              )
+            )
+          }
+        }
+      }
+    } else {
+      result(
+        FlutterError(
+          code: "UNSUPPORTED_IOS_VERSION",
+          message: "FinanceKit requires iOS 17.4 or later",
+          details: ["errorType": 4, "errorCode": "UNSUPPORTED_IOS_VERSION"]
+        )
+      )
+    }
+  }
+
   private func sendCreationExit(defaultMessage: String) {
     let errorMessage = sessionCreationError?.localizedDescription ?? defaultMessage
     sendEvent(
@@ -160,6 +382,146 @@ public class PlaidLinkFlutterPlugin: NSObject, FlutterPlugin, FlutterStreamHandl
     DispatchQueue.main.async { [weak self] in
       self?.eventSink?(["type": type, "payload": payload])
     }
+  }
+
+  private func sendEmbeddedEvent(viewId: Int64, type: String, payload: [String: Any]) {
+    DispatchQueue.main.async { [weak self] in
+      self?.eventSink?(["type": type, "viewId": viewId, "payload": payload])
+    }
+  }
+}
+
+private struct LayerSubmissionData: SubmissionData {
+  let phoneNumber: String?
+  let dateOfBirth: String?
+  let params: [String: String]?
+}
+
+private class PlaidEmbeddedSearchViewFactory: NSObject, FlutterPlatformViewFactory {
+  private let sendEmbeddedEvent: (Int64, String, [String: Any]) -> Void
+
+  init(sendEmbeddedEvent: @escaping (Int64, String, [String: Any]) -> Void) {
+    self.sendEmbeddedEvent = sendEmbeddedEvent
+  }
+
+  func createArgsCodec() -> FlutterMessageCodec & NSObjectProtocol {
+    FlutterStandardMessageCodec.sharedInstance()
+  }
+
+  func create(
+    withFrame frame: CGRect,
+    viewIdentifier viewId: Int64,
+    arguments args: Any?
+  ) -> FlutterPlatformView {
+    let arguments = args as? [String: Any]
+    return PlaidEmbeddedSearchPlatformView(
+      frame: frame,
+      viewId: viewId,
+      token: arguments?["token"] as? String ?? "",
+      sendEmbeddedEvent: sendEmbeddedEvent
+    )
+  }
+}
+
+private class PlaidEmbeddedSearchPlatformView: NSObject, FlutterPlatformView {
+  private let container: UIView
+  private let viewId: Int64
+  private let sendEmbeddedEvent: (Int64, String, [String: Any]) -> Void
+  private var embeddedView: EmbeddedSearchUIView?
+
+  init(
+    frame: CGRect,
+    viewId: Int64,
+    token: String,
+    sendEmbeddedEvent: @escaping (Int64, String, [String: Any]) -> Void
+  ) {
+    self.container = UIView(frame: frame)
+    self.viewId = viewId
+    self.sendEmbeddedEvent = sendEmbeddedEvent
+    super.init()
+    container.clipsToBounds = true
+    createEmbeddedView(token: token)
+  }
+
+  func view() -> UIView {
+    container
+  }
+
+  private func createEmbeddedView(token: String) {
+    guard !token.isEmpty else {
+      return
+    }
+
+    let configuration = EmbeddedLinkTokenConfiguration(
+      token: token,
+      onSuccess: { [weak self] success in
+        self?.send("embeddedSuccess", success.asDictionary)
+      },
+      onExit: { [weak self] exit in
+        self?.send("embeddedExit", exit.asDictionary)
+      },
+      onEvent: { [weak self] event in
+        self?.send("embeddedEvent", event.asDictionary)
+      }
+    )
+
+    guard let viewController = UIApplication.shared.plaidTopViewController() else {
+      send("embeddedExit", [
+        "error": [
+          "errorCode": "NO_VIEW_CONTROLLER",
+          "errorType": "INTERNAL_ERROR",
+          "errorMessage": "Could not find current view controller.",
+          "displayMessage": "Could not find current view controller.",
+          "errorJson": "",
+        ],
+        "metadata": [
+          "linkSessionId": "",
+          "institution": "",
+          "status": "",
+          "requestId": "",
+          "metadataJson": "",
+        ],
+      ])
+      return
+    }
+
+    do {
+      let view = try Plaid.createEmbeddedLinkUIView(
+        configuration: configuration,
+        presentationMethod: .viewController(viewController)
+      )
+      embeddedView = view
+      view.translatesAutoresizingMaskIntoConstraints = false
+      container.addSubview(view)
+      NSLayoutConstraint.activate([
+        view.topAnchor.constraint(equalTo: container.topAnchor),
+        view.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+        view.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+        view.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+      ])
+      send("embeddedLoad", [:])
+    } catch {
+      send("embeddedExit", [
+        "error": [
+          "errorCode": "CREATE_VIEW_ERROR",
+          "errorType": "INTERNAL_ERROR",
+          "errorMessage": error.localizedDescription,
+          "displayMessage": error.localizedDescription,
+          "errorJson": "",
+        ],
+        "metadata": [
+          "linkSessionId": "",
+          "institution": "",
+          "status": "",
+          "requestId": "",
+          "metadataJson": "",
+        ],
+      ])
+    }
+  }
+
+  private func send(_ type: String, _ payload: [String: Any]) {
+    sendEmbeddedEvent(viewId, type, payload)
   }
 }
 
@@ -309,6 +671,48 @@ private extension ExitErrorCode {
     case .unknown(_, let code): return code
     @unknown default: return "UNKNOWN"
     }
+  }
+}
+
+@available(iOS 17.4, *)
+private extension FinanceKitError {
+  var asFinanceKitErrorDictionary: [String: Any] {
+    let errorType: Int
+    let errorCode: String
+    let errorMessage: String
+
+    switch self {
+    case .invalidToken:
+      errorType = 0
+      errorCode = "INVALID_TOKEN"
+      errorMessage = localizedDescription
+    case .permissionError:
+      errorType = 1
+      errorCode = "PERMISSION_ERROR"
+      errorMessage = localizedDescription
+    case .linkApiError:
+      errorType = 2
+      errorCode = "LINK_API_ERROR"
+      errorMessage = localizedDescription
+    case .permissionAccessError:
+      errorType = 3
+      errorCode = "PERMISSION_ACCESS_ERROR"
+      errorMessage = localizedDescription
+    case .unknown(let error):
+      errorType = 4
+      errorCode = "UNKNOWN"
+      errorMessage = error.localizedDescription
+    @unknown default:
+      errorType = 4
+      errorCode = "UNKNOWN"
+      errorMessage = localizedDescription
+    }
+
+    return [
+      "errorType": errorType,
+      "errorCode": errorCode,
+      "errorMessage": errorMessage,
+    ]
   }
 }
 
