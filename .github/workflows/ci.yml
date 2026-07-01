@@ -1,0 +1,162 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: "3.29.3"
+
+jobs:
+  dart:
+    name: Dart
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Flutter version
+        run: flutter --version
+
+      - name: Get package dependencies
+        run: flutter pub get
+
+      - name: Get example dependencies
+        working-directory: example
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test package
+        run: flutter test
+
+      - name: Test example
+        working-directory: example
+        run: flutter test
+
+  android:
+    name: Android
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('android/**/*.gradle', 'android/**/*.gradle.kts', 'example/android/**/*.gradle', 'example/android/**/*.gradle.kts', 'example/android/gradle/wrapper/gradle-wrapper.properties', 'example/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Install Android packages
+        run: |
+          set -euo pipefail
+
+          SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          if [[ ! -x "$SDKMANAGER" ]]; then
+            SDKMANAGER="$(find "$ANDROID_HOME" -path "*/bin/sdkmanager" -type f | head -n 1)"
+          fi
+          if [[ -z "$SDKMANAGER" || ! -x "$SDKMANAGER" ]]; then
+            echo "sdkmanager not found under ANDROID_HOME=$ANDROID_HOME"
+            exit 1
+          fi
+
+          set +o pipefail
+          yes | "$SDKMANAGER" --licenses
+          set -o pipefail
+
+          "$SDKMANAGER" "platforms;android-36" "ndk;27.0.12077973"
+
+      - name: Build example APK
+        working-directory: example
+        run: flutter build apk --debug
+
+      - name: Test Android plugin
+        working-directory: example/android
+        run: ./gradlew :plaid_link_flutter:testDebugUnitTest
+
+  ios:
+    name: iOS
+    runs-on: macos-15
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Verify LinkKit framework
+        run: |
+          set -euo pipefail
+
+          VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' ios/Frameworks/LinkKit.xcframework/ios-arm64/LinkKit.framework/Info.plist)
+          if [[ "$VERSION" != "7.0.1" ]]; then
+            echo "Expected LinkKit 7.0.1, found $VERSION"
+            exit 1
+          fi
+
+          LIBRARIES=$(/usr/libexec/PlistBuddy -c 'Print :AvailableLibraries' ios/Frameworks/LinkKit.xcframework/Info.plist)
+          if ! grep -q "LibraryIdentifier = ios-arm64" <<< "$LIBRARIES"; then
+            echo "Missing ios-arm64 LinkKit slice"
+            exit 1
+          fi
+          if ! grep -q "LibraryIdentifier = ios-arm64_x86_64-simulator" <<< "$LIBRARIES"; then
+            echo "Missing ios-arm64_x86_64-simulator LinkKit slice"
+            exit 1
+          fi
+          if grep -q "maccatalyst" <<< "$LIBRARIES"; then
+            echo "Mac Catalyst LinkKit slice must not be present"
+            exit 1
+          fi
+
+      - name: Get example dependencies
+        working-directory: example
+        run: flutter pub get
+
+      - name: Build iOS simulator example
+        working-directory: example
+        run: flutter build ios --simulator --no-codesign
