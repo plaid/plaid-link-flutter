@@ -2,6 +2,11 @@ import Flutter
 import LinkKit
 import UIKit
 
+@objc(PlaidFlutterPlugin)
+public final class PlaidFlutterPlugin: NSObject {
+  @objc public static let sdkVersion: String = "0.0.1"
+}
+
 public class PlaidLinkFlutterPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
   private var eventSink: FlutterEventSink?
   private var linkSession: PlaidLinkSession?
