@@ -1,3 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
   package="com.plaid.plaid_link_flutter">
+  <application>
+    <meta-data
+      android:name="com.plaid.link.flutter"
+      android:value="0.0.1" />
+  </application>
 </manifest>
