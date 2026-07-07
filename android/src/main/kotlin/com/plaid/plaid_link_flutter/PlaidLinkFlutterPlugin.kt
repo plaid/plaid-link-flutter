@@ -405,20 +405,32 @@ private class PlaidEmbeddedSearchPlatformView(
   }
 }
 
+internal class SingleActiveDispatcher<T> {
+  private var activeHandler: ((T) -> Unit)? = null
+
+  fun register(handler: (T) -> Unit) {
+    activeHandler = handler
+  }
+
+  fun unregister(handler: (T) -> Unit) {
+    if (activeHandler == handler) {
+      activeHandler = null
+    }
+  }
+
+  fun dispatch(value: T) {
+    activeHandler?.invoke(value)
+  }
+}
+
 private object PlaidEmbeddedResultDispatcher {
-  private val handlers = mutableSetOf<(LinkResult) -> Unit>()
+  private val dispatcher = SingleActiveDispatcher<LinkResult>()
 
-  fun register(handler: (LinkResult) -> Unit) {
-    handlers.add(handler)
-  }
+  fun register(handler: (LinkResult) -> Unit) = dispatcher.register(handler)
 
-  fun unregister(handler: (LinkResult) -> Unit) {
-    handlers.remove(handler)
-  }
+  fun unregister(handler: (LinkResult) -> Unit) = dispatcher.unregister(handler)
 
-  fun dispatch(result: LinkResult) {
-    handlers.toList().forEach { it(result) }
-  }
+  fun dispatch(result: LinkResult) = dispatcher.dispatch(result)
 }
 
 internal fun LinkSuccess.toWritableMap(): Map<String, Any> =

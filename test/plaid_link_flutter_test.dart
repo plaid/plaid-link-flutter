@@ -33,6 +33,9 @@ class FakePlaidLinkFlutterPlatform
   bool startedHeadless = false;
   SubmissionData? submittedData;
   FinanceKitConfiguration? financeKitConfiguration;
+  bool failCreateLinkSession = false;
+  bool failCreateLayerSession = false;
+  bool failCreateHeadlessSession = false;
 
   @override
   Stream<LinkSuccess> get onSuccess => successController.stream;
@@ -76,6 +79,9 @@ class FakePlaidLinkFlutterPlatform
 
   @override
   Future<void> createPlaidLinkSession(String token) async {
+    if (failCreateLinkSession) {
+      throw PlatformException(code: 'CREATE_FAILED', message: 'create failed');
+    }
     createdToken = token;
   }
 
@@ -86,6 +92,9 @@ class FakePlaidLinkFlutterPlatform
 
   @override
   Future<void> createPlaidLayerSession(String token) async {
+    if (failCreateLayerSession) {
+      throw PlatformException(code: 'CREATE_FAILED', message: 'create failed');
+    }
     createdLayerToken = token;
   }
 
@@ -101,6 +110,9 @@ class FakePlaidLinkFlutterPlatform
 
   @override
   Future<void> createPlaidHeadlessSession(String token) async {
+    if (failCreateHeadlessSession) {
+      throw PlatformException(code: 'CREATE_FAILED', message: 'create failed');
+    }
     createdHeadlessToken = token;
   }
 
@@ -238,6 +250,117 @@ void main() {
     await fakePlatform.dispose();
   });
 
+  test('create failure cleans up registered listeners', () async {
+    final fakePlatform = FakePlaidLinkFlutterPlatform();
+    fakePlatform.failCreateLinkSession = true;
+    PlaidLinkFlutterPlatform.instance = fakePlatform;
+    var successCount = 0;
+    var eventCount = 0;
+
+    await expectLater(
+      createPlaidLinkSession(
+        LinkTokenConfiguration(
+          token: 'link-sandbox-token',
+          onSuccess: (_) => successCount++,
+          onExit: (_) {},
+          onEvent: (_) => eventCount++,
+        ),
+      ),
+      throwsA(isA<PlatformException>()),
+    );
+
+    fakePlatform.successController.add(sampleSuccess());
+    fakePlatform.eventController.add(sampleEvent());
+    await Future<void>.delayed(Duration.zero);
+
+    expect(successCount, 0);
+    expect(eventCount, 0);
+
+    await fakePlatform.dispose();
+  });
+
+  test('layer create failure cleans up registered listeners', () async {
+    final fakePlatform = FakePlaidLinkFlutterPlatform();
+    fakePlatform.failCreateLayerSession = true;
+    PlaidLinkFlutterPlatform.instance = fakePlatform;
+    var successCount = 0;
+
+    await expectLater(
+      createPlaidLayerSession(
+        LayerTokenConfiguration(
+          token: 'link-sandbox-layer-token',
+          onSuccess: (_) => successCount++,
+        ),
+      ),
+      throwsA(isA<PlatformException>()),
+    );
+
+    fakePlatform.successController.add(sampleSuccess());
+    await Future<void>.delayed(Duration.zero);
+
+    expect(successCount, 0);
+
+    await fakePlatform.dispose();
+  });
+
+  test('headless create failure cleans up registered listeners', () async {
+    final fakePlatform = FakePlaidLinkFlutterPlatform();
+    fakePlatform.failCreateHeadlessSession = true;
+    PlaidLinkFlutterPlatform.instance = fakePlatform;
+    var successCount = 0;
+
+    await expectLater(
+      createPlaidHeadlessSession(
+        LinkTokenConfiguration(
+          token: 'link-sandbox-headless-token',
+          onSuccess: (_) => successCount++,
+          onExit: (_) {},
+          onEvent: (_) {},
+        ),
+      ),
+      throwsA(isA<PlatformException>()),
+    );
+
+    fakePlatform.successController.add(sampleSuccess());
+    await Future<void>.delayed(Duration.zero);
+
+    expect(successCount, 0);
+
+    await fakePlatform.dispose();
+  });
+
+  test('creating a new session replaces previous session listeners', () async {
+    final fakePlatform = FakePlaidLinkFlutterPlatform();
+    PlaidLinkFlutterPlatform.instance = fakePlatform;
+    var linkSuccessCount = 0;
+    var headlessSuccessCount = 0;
+
+    await createPlaidLinkSession(
+      LinkTokenConfiguration(
+        token: 'link-sandbox-token',
+        onSuccess: (_) => linkSuccessCount++,
+        onExit: (_) {},
+        onEvent: (_) {},
+      ),
+    );
+    await createPlaidHeadlessSession(
+      LinkTokenConfiguration(
+        token: 'link-sandbox-headless-token',
+        onSuccess: (_) => headlessSuccessCount++,
+        onExit: (_) {},
+        onEvent: (_) {},
+      ),
+    );
+
+    fakePlatform.successController.add(sampleSuccess());
+    await Future<void>.delayed(Duration.zero);
+
+    expect(linkSuccessCount, 0);
+    expect(headlessSuccessCount, 1);
+
+    await fakePlatform.dispose();
+  });
+
   test('syncFinanceKit forwards configuration', () async {
     final fakePlatform = FakePlaidLinkFlutterPlatform();
     PlaidLinkFlutterPlatform.instance = fakePlatform;
@@ -305,6 +428,37 @@ void main() {
     expect(success.publicToken, 'public-token');
     expect(success.metadata.institution?.name, 'Plaid Bank');
     expect(success.metadata.accounts.single.subtype, 'checking');
+  });
+
+  test('models tolerate missing and malformed optional payload fields', () {
+    final success = LinkSuccess.fromMap({
+      'publicToken': 'public-token',
+      'metadata': {
+        'linkSessionId': 'session-id',
+        'institution': '',
+        'accounts': 'not-a-list',
+      },
+    });
+    final exit = LinkExit.fromMap({
+      'error': '',
+      'metadata': {'linkSessionId': null, 'requestId': null},
+    });
+    final event = LinkEvent.fromMap({
+      'eventName': 'OPEN',
+      'metadata': {
+        'linkSessionId': 'session-id',
+        'timestamp': null,
+        'viewName': null,
+      },
+    });
+
+    expect(success.metadata.institution, isNull);
+    expect(success.metadata.accounts, isEmpty);
+    expect(exit.error, isNull);
+    expect(exit.metadata.linkSessionId, '');
+    expect(exit.metadata.requestId, '');
+    expect(event.metadata.timestamp, '');
+    expect(event.metadata.viewName, '');
   });
 }
 
