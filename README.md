@@ -146,15 +146,13 @@ The vendored iOS framework intentionally contains only iOS device and simulator 
 ## Setup Notes
 
 Create link tokens on your server using Plaid's `/link/token/create` endpoint,
-then pass the link token into the Flutter app. Client-side public key
-configuration is not supported.
+then pass the link token into the Flutter app. 
 
 For OAuth flows, configure your redirect URI in the Plaid Dashboard and your
-native app platform settings. The Flutter API does not expose a separate
-`resumeAfterTermination` method and does not require a `plaidlink://complete`
-handler. With LinkKit `7.0.1`, iOS OAuth return handling is owned by the native
+native app platform settings. iOS OAuth return handling is owned by the native
 SDK and your Universal Link configuration. On Android, register the app package
 name and any redirect URI configuration required by your Plaid Link token.
+
 
 Identity Verification flows may require camera usage strings and permissions in
 the host app.
@@ -224,21 +222,3 @@ Apple FinanceKit entitlement and an eligible Item. Use
 Use sandbox Link tokens and Plaid test institutions for regular Link, Layer,
 Headless, and Embedded Search smoke tests. Always test the final OAuth redirect
 configuration with the same bundle ID or Android package name that will ship.
-
-## Current Scope
-
-Implemented:
-
-- `createPlaidLinkSession`
-- `PlaidLinkSession.open([bool fullScreen = false])`
-- `createPlaidLayerSession`
-- `PlaidLayerSession.open()`
-- `PlaidLayerSession.submit(SubmissionData data)`
-- `createPlaidHeadlessSession`
-- `PlaidHeadlessSession.start()`
-- `syncFinanceKit`
-- `PlaidEmbeddedSearchView`
-- `PlaidLink.sdkVersion`
-- Success, exit, and event payload parsing
-- iOS and Android native regular Link, Layer, Headless, and Embedded Search
-- iOS native FinanceKit sync; Android returns a FinanceKit unsupported error
