@@ -2,6 +2,26 @@
 
 Official Flutter plugin for Plaid Link.
 
+## Installation
+
+Add the package:
+
+```yaml
+dependencies:
+  plaid_link_flutter: ^0.0.1
+```
+
+Then import it:
+
+```dart
+import 'package:plaid_link_flutter/plaid_link_flutter.dart';
+```
+
+If you are migrating from the community `plaid_flutter` package, start with the
+[migration guide](doc/migration-guide.md).
+
+## Quick Start
+
 This implementation supports the React Native SDK's session-shaped Link API:
 
 ```dart
@@ -64,6 +84,17 @@ The vendored iOS framework intentionally contains only iOS device and simulator 
 - iOS `15.0+`
 - Android `minSdk 26+`
 
+## Setup Notes
+
+Create link tokens on your server using Plaid's `/link/token/create` endpoint,
+then pass the link token into the Flutter app. 
+
+For OAuth flows, configure your redirect URI in the Plaid Dashboard and your
+native app platform settings. 
+
+Identity Verification flows may require camera usage strings and permissions in
+the host app.
+
 ## Example App
 
 The example app mirrors the React Native example visually and includes screens
@@ -82,21 +113,3 @@ The app displays success, exit, and event callback results.
 - The SDK supports one active non-embedded session callback set at a time. Creating a Link, Layer, or Headless session replaces callbacks from the previous non-embedded session.
 - Success and exit callbacks are terminal and clean up listeners. Event callbacks are non-terminal.
 - Embedded Search is mobile-only. Android currently supports one active embedded search view at a time because the native result callback does not expose a per-view result identifier.
-
-## Current Scope
-
-Implemented:
-
-- `createPlaidLinkSession`
-- `PlaidLinkSession.open([bool fullScreen = false])`
-- `createPlaidLayerSession`
-- `PlaidLayerSession.open()`
-- `PlaidLayerSession.submit(SubmissionData data)`
-- `createPlaidHeadlessSession`
-- `PlaidHeadlessSession.start()`
-- `syncFinanceKit`
-- `PlaidEmbeddedSearchView`
-- `PlaidLink.sdkVersion`
-- Success, exit, and event payload parsing
-- iOS and Android native regular Link, Layer, Headless, and Embedded Search
-- iOS native FinanceKit sync; Android returns a FinanceKit unsupported error
