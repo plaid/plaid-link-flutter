@@ -61,4 +61,33 @@ internal class PlaidLinkFlutterPluginTest {
     assertEquals("INVALID_CREDENTIALS", error["errorCode"])
     assertEquals("session-id", metadata["linkSessionId"])
   }
+
+  @Test
+  fun singleActiveDispatcher_onlyDispatchesToLatestHandler() {
+    val dispatcher = SingleActiveDispatcher<String>()
+    val received = mutableListOf<String>()
+    val firstHandler: (String) -> Unit = { received.add("first:$it") }
+    val secondHandler: (String) -> Unit = { received.add("second:$it") }
+
+    dispatcher.register(firstHandler)
+    dispatcher.register(secondHandler)
+    dispatcher.dispatch("result")
+
+    assertEquals(listOf("second:result"), received)
+  }
+
+  @Test
+  fun singleActiveDispatcher_ignoresStaleUnregisters() {
+    val dispatcher = SingleActiveDispatcher<String>()
+    val received = mutableListOf<String>()
+    val firstHandler: (String) -> Unit = { received.add("first:$it") }
+    val secondHandler: (String) -> Unit = { received.add("second:$it") }
+
+    dispatcher.register(firstHandler)
+    dispatcher.register(secondHandler)
+    dispatcher.unregister(firstHandler)
+    dispatcher.dispatch("result")
+
+    assertEquals(listOf("second:result"), received)
+  }
 }

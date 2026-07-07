@@ -77,6 +77,12 @@ flutter run
 Paste a `link_token`, create a session, then open or start the selected flow.
 The app displays success, exit, and event callback results.
 
+## Behavior Notes
+
+- The SDK supports one active non-embedded session callback set at a time. Creating a Link, Layer, or Headless session replaces callbacks from the previous non-embedded session.
+- Success and exit callbacks are terminal and clean up listeners. Event callbacks are non-terminal.
+- Embedded Search is mobile-only. Android currently supports one active embedded search view at a time because the native result callback does not expose a per-view result identifier.
+
 ## Current Scope
 
 Implemented:

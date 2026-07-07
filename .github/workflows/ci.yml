@@ -44,6 +44,9 @@ jobs:
         working-directory: example
         run: flutter pub get
 
+      - name: Check package versions
+        run: bash tool/check_versions.sh
+
       - name: Analyze
         run: flutter analyze
 
@@ -53,6 +56,9 @@ jobs:
       - name: Test example
         working-directory: example
         run: flutter test
+
+      - name: Publish dry run
+        run: dart pub publish --dry-run
 
   android:
     name: Android
@@ -130,32 +136,15 @@ jobs:
           cache: true
 
       - name: Verify LinkKit framework
-        run: |
-          set -euo pipefail
-
-          VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' ios/Frameworks/LinkKit.xcframework/ios-arm64/LinkKit.framework/Info.plist)
-          if [[ "$VERSION" != "7.0.1" ]]; then
-            echo "Expected LinkKit 7.0.1, found $VERSION"
-            exit 1
-          fi
-
-          LIBRARIES=$(/usr/libexec/PlistBuddy -c 'Print :AvailableLibraries' ios/Frameworks/LinkKit.xcframework/Info.plist)
-          if ! grep -q "LibraryIdentifier = ios-arm64" <<< "$LIBRARIES"; then
-            echo "Missing ios-arm64 LinkKit slice"
-            exit 1
-          fi
-          if ! grep -q "LibraryIdentifier = ios-arm64_x86_64-simulator" <<< "$LIBRARIES"; then
-            echo "Missing ios-arm64_x86_64-simulator LinkKit slice"
-            exit 1
-          fi
-          if grep -q "maccatalyst" <<< "$LIBRARIES"; then
-            echo "Mac Catalyst LinkKit slice must not be present"
-            exit 1
-          fi
+        run: bash tool/validate_linkkit.sh
 
       - name: Get example dependencies
         working-directory: example
         run: flutter pub get
+
+      - name: Lint podspec
+        working-directory: ios
+        run: pod lib lint plaid_link_flutter.podspec --allow-warnings --skip-import-validation --no-clean
 
       - name: Build iOS simulator example
         working-directory: example

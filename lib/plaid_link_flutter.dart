@@ -129,9 +129,16 @@ Future<PlaidLinkSession> createPlaidLinkSession(
     config.onEvent,
   );
 
-  await PlaidLinkFlutterPlatform.instance.createPlaidLinkSession(config.token);
-  config.onLoad?.call();
-  return PlaidLinkSession._();
+  try {
+    await PlaidLinkFlutterPlatform.instance.createPlaidLinkSession(
+      config.token,
+    );
+    config.onLoad?.call();
+    return PlaidLinkSession._();
+  } catch (_) {
+    _cleanupListeners();
+    rethrow;
+  }
 }
 
 Future<PlaidLayerSession> createPlaidLayerSession(
@@ -157,8 +164,15 @@ Future<PlaidLayerSession> createPlaidLayerSession(
     );
   }
 
-  await PlaidLinkFlutterPlatform.instance.createPlaidLayerSession(config.token);
-  return PlaidLayerSession._();
+  try {
+    await PlaidLinkFlutterPlatform.instance.createPlaidLayerSession(
+      config.token,
+    );
+    return PlaidLayerSession._();
+  } catch (_) {
+    _cleanupListeners();
+    rethrow;
+  }
 }
 
 Future<PlaidHeadlessSession> createPlaidHeadlessSession(
@@ -182,11 +196,16 @@ Future<PlaidHeadlessSession> createPlaidHeadlessSession(
     config.onEvent,
   );
 
-  await PlaidLinkFlutterPlatform.instance.createPlaidHeadlessSession(
-    config.token,
-  );
-  config.onLoad?.call();
-  return PlaidHeadlessSession._();
+  try {
+    await PlaidLinkFlutterPlatform.instance.createPlaidHeadlessSession(
+      config.token,
+    );
+    config.onLoad?.call();
+    return PlaidHeadlessSession._();
+  } catch (_) {
+    _cleanupListeners();
+    rethrow;
+  }
 }
 
 Future<void> syncFinanceKit(FinanceKitConfiguration config) {
