@@ -2,6 +2,26 @@
 
 Official Flutter plugin for Plaid Link.
 
+## Installation
+
+Add the package:
+
+```yaml
+dependencies:
+  plaid_link_flutter: ^0.0.1
+```
+
+Then import it:
+
+```dart
+import 'package:plaid_link_flutter/plaid_link_flutter.dart';
+```
+
+If you are migrating from the community `plaid_flutter` package, start with the
+[migration guide](doc/migration-guide.md).
+
+## Quick Start
+
 This implementation supports the React Native SDK's session-shaped Link API:
 
 ```dart
@@ -63,6 +83,19 @@ The vendored iOS framework intentionally contains only iOS device and simulator 
 - Dart `3.7+`
 - iOS `15.0+`
 - Android `minSdk 26+`
+
+## Setup Notes
+
+Create link tokens on your server using Plaid's `/link/token/create` endpoint,
+then pass the link token into the Flutter app. Client-side public key
+configuration is not supported.
+
+For OAuth flows, configure your redirect URI in the Plaid Dashboard and your
+native app platform settings. The Flutter API does not expose a separate
+`resumeAfterTermination` method.
+
+Identity Verification flows may require camera usage strings and permissions in
+the host app.
 
 ## Example App
 
