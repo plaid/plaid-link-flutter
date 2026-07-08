@@ -8,7 +8,7 @@ Add the package:
 
 ```yaml
 dependencies:
-  plaid_link_flutter: ^0.0.1
+  plaid_link_flutter: ^1.0.0
 ```
 
 Then import it:
@@ -49,7 +49,7 @@ For Identity Verification flows, add `NSCameraUsageDescription` to the host
 app's `Info.plist` if your Link token can require document or selfie capture.
 
 For Embedded Search, render `PlaidEmbeddedSearchView` with a finite width and
-height. It is backed by a Flutter platform view (`UiKitView`) on iOS.
+height. It is backed by a Flutter platform view (`UIKitView`) on iOS.
 
 ### Android
 
