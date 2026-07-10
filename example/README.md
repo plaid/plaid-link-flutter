@@ -68,7 +68,7 @@ real eligible device/account setup. Android intentionally shows the
 
 ## OAuth Testing
 
-Use a token configured with the same redirect URI you plan to ship. On iOS,
+Use a token configured with the same redirect URI or package name that you plan to ship and have set up in the Plaid dashboard. On iOS,
 verify the Universal Link domain association for that redirect URI. On Android,
 verify the package name and app link/deep link handling. This Flutter SDK does not configure
 `plaidlink://complete` and does not expose `resumeAfterTermination`; native Link
