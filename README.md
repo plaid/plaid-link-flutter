@@ -223,7 +223,8 @@ Apple FinanceKit entitlement and an eligible Item. Use
 
 Use sandbox Link tokens and Plaid test institutions for regular Link, Layer,
 Headless, and Embedded Search smoke tests. Always test the final OAuth redirect
-configuration with the same bundle ID or Android package name that will ship.
+configuration that will ship: the iOS redirect URI and Universal Link domain
+association, and the Android package name and app link/deep link handling.
 
 ## Current Scope
 
