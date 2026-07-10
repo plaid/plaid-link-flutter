@@ -8,7 +8,7 @@ Add the package:
 
 ```yaml
 dependencies:
-  plaid_link_flutter: ^0.0.1
+  plaid_link_flutter: ^1.0.0
 ```
 
 Then import it:
@@ -49,7 +49,7 @@ For Identity Verification flows, add `NSCameraUsageDescription` to the host
 app's `Info.plist` if your Link token can require document or selfie capture.
 
 For Embedded Search, render `PlaidEmbeddedSearchView` with a finite width and
-height. It is backed by a Flutter platform view (`UiKitView`) on iOS.
+height. It is backed by a Flutter platform view (`UIKitView`) on iOS.
 
 ### Android
 
@@ -146,15 +146,13 @@ The vendored iOS framework intentionally contains only iOS device and simulator 
 ## Setup Notes
 
 Create link tokens on your server using Plaid's `/link/token/create` endpoint,
-then pass the link token into the Flutter app. Client-side public key
-configuration is not supported.
+then pass the link token into the Flutter app. 
 
 For OAuth flows, configure your redirect URI in the Plaid Dashboard and your
-native app platform settings. The Flutter API does not expose a separate
-`resumeAfterTermination` method and does not require a `plaidlink://complete`
-handler. With LinkKit `7.0.1`, iOS OAuth return handling is owned by the native
+native app platform settings. iOS OAuth return handling is owned by the native
 SDK and your Universal Link configuration. On Android, register the app package
 name and any redirect URI configuration required by your Plaid Link token.
+
 
 Identity Verification flows may require camera usage strings and permissions in
 the host app.
