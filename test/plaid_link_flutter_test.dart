@@ -437,6 +437,32 @@ void main() {
     expect(exception.message, 'Denied');
   });
 
+  test('FinanceKitException maps platform-support error codes', () {
+    final android = FinanceKitException.fromPlatformException(
+      PlatformException(code: 'UNSUPPORTED_ANDROID', message: 'iOS only'),
+    );
+    final iosVersion = FinanceKitException.fromPlatformException(
+      PlatformException(code: 'UNSUPPORTED_IOS_VERSION', message: 'needs 17.4'),
+    );
+
+    expect(android.type, FinanceKitErrorType.unsupportedAndroid);
+    expect(iosVersion.type, FinanceKitErrorType.unsupportedIosVersion);
+  });
+
+  test('PlaidLinkException maps known codes and preserves the raw code', () {
+    final typed = PlaidLinkException.fromPlatformException(
+      PlatformException(code: 'PLAID_NO_SESSION', message: 'not created'),
+    );
+    final unknown = PlaidLinkException.fromPlatformException(
+      PlatformException(code: 'SOME_NEW_CODE', message: 'future'),
+    );
+
+    expect(typed.type, PlaidLinkErrorType.noSession);
+    expect(typed.code, 'PLAID_NO_SESSION');
+    expect(unknown.type, PlaidLinkErrorType.unknown);
+    expect(unknown.code, 'SOME_NEW_CODE');
+  });
+
   test('LinkSuccess parses RN-shaped payloads', () {
     final success = LinkSuccess.fromMap({
       'publicToken': 'public-token',

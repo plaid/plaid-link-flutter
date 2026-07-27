@@ -223,8 +223,7 @@ public class PlaidLinkFlutterPlugin: NSObject, FlutterPlugin, FlutterStreamHandl
 
   private func openLinkSession(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
     guard let session = linkSession else {
-      sendCreationExit(defaultMessage: "createPlaidLinkSession was not called.")
-      result(nil)
+      result(noSessionError(defaultMessage: "createPlaidLinkSession was not called."))
       return
     }
 
@@ -256,8 +255,7 @@ public class PlaidLinkFlutterPlugin: NSObject, FlutterPlugin, FlutterStreamHandl
 
   private func openLayerSession(result: @escaping FlutterResult) {
     guard let session = layerSession else {
-      sendCreationExit(defaultMessage: "createPlaidLayerSession was not called.")
-      result(nil)
+      result(noSessionError(defaultMessage: "createPlaidLayerSession was not called."))
       return
     }
 
@@ -299,8 +297,7 @@ public class PlaidLinkFlutterPlugin: NSObject, FlutterPlugin, FlutterStreamHandl
 
   private func startHeadlessSession(result: @escaping FlutterResult) {
     guard let session = headlessSession else {
-      sendCreationExit(defaultMessage: "createPlaidHeadlessSession was not called.")
-      result(nil)
+      result(noSessionError(defaultMessage: "createPlaidHeadlessSession was not called."))
       return
     }
 
@@ -358,26 +355,11 @@ public class PlaidLinkFlutterPlugin: NSObject, FlutterPlugin, FlutterStreamHandl
     }
   }
 
-  private func sendCreationExit(defaultMessage: String) {
-    let errorMessage = sessionCreationError?.localizedDescription ?? defaultMessage
-    sendEvent(
-      type: "exit",
-      payload: [
-        "error": [
-          "errorType": "creation error",
-          "errorCode": "-1",
-          "errorMessage": errorMessage,
-          "displayMessage": errorMessage,
-          "errorJson": "",
-        ],
-        "metadata": [
-          "linkSessionId": "",
-          "institution": "",
-          "status": "",
-          "requestId": "",
-          "metadataJson": "",
-        ],
-      ]
+  private func noSessionError(defaultMessage: String) -> FlutterError {
+    FlutterError(
+      code: "PLAID_NO_SESSION",
+      message: sessionCreationError?.localizedDescription ?? defaultMessage,
+      details: nil
     )
   }
 

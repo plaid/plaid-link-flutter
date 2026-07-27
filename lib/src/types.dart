@@ -291,7 +291,9 @@ enum FinanceKitErrorType {
   permissionError(1),
   linkApiError(2),
   permissionAccessError(3),
-  unknown(4);
+  unsupportedAndroid(4),
+  unsupportedIosVersion(5),
+  unknown(6);
 
   const FinanceKitErrorType(this.value);
 
@@ -301,6 +303,8 @@ enum FinanceKitErrorType {
       'PERMISSION_ERROR' => FinanceKitErrorType.permissionError,
       'LINK_API_ERROR' => FinanceKitErrorType.linkApiError,
       'PERMISSION_ACCESS_ERROR' => FinanceKitErrorType.permissionAccessError,
+      'UNSUPPORTED_ANDROID' => FinanceKitErrorType.unsupportedAndroid,
+      'UNSUPPORTED_IOS_VERSION' => FinanceKitErrorType.unsupportedIosVersion,
       _ => FinanceKitErrorType.unknown,
     };
   }
@@ -330,6 +334,67 @@ class FinanceKitException implements Exception {
 
   @override
   String toString() => 'FinanceKitException($code): $message';
+}
+
+/// Typed error codes thrown by Link session create/open/submit calls.
+///
+/// The raw platform [code] string is always preserved on [PlaidLinkException];
+/// [unknown] is used for any code not modeled here so new native codes never
+/// crash a consumer that switches on [type].
+enum PlaidLinkErrorType {
+  invalidToken('INVALID_TOKEN'),
+  linkSessionCreateError('LINK_SESSION_CREATE_ERROR'),
+  layerSessionCreateError('LAYER_SESSION_CREATE_ERROR'),
+  headlessSessionCreateError('HEADLESS_SESSION_CREATE_ERROR'),
+  noActivity('PLAID_NO_ACTIVITY'),
+  noViewController('PLAID_NO_VC'),
+  noLayerSession('PLAID_NO_LAYER_SESSION'),
+  noSession('PLAID_NO_SESSION'),
+  openError('PLAID_OPEN_ERROR'),
+  unknown('UNKNOWN');
+
+  const PlaidLinkErrorType(this.code);
+
+  factory PlaidLinkErrorType.fromCode(String code) {
+    for (final type in PlaidLinkErrorType.values) {
+      if (type.code == code) {
+        return type;
+      }
+    }
+    return PlaidLinkErrorType.unknown;
+  }
+
+  final String code;
+}
+
+/// Thrown by [createPlaidLinkSession], the session `open`/`start`/`submit`
+/// calls, mirroring [FinanceKitException] so Link errors are typed rather than
+/// raw `PlatformException`s.
+class PlaidLinkException implements Exception {
+  const PlaidLinkException({
+    required this.type,
+    required this.code,
+    required this.message,
+    this.details,
+  });
+
+  factory PlaidLinkException.fromPlatformException(dynamic error) {
+    final code = error.code?.toString() ?? 'UNKNOWN';
+    return PlaidLinkException(
+      type: PlaidLinkErrorType.fromCode(code),
+      code: code,
+      message: error.message?.toString() ?? 'Plaid Link operation failed.',
+      details: error.details,
+    );
+  }
+
+  final PlaidLinkErrorType type;
+  final String code;
+  final String message;
+  final Object? details;
+
+  @override
+  String toString() => 'PlaidLinkException($code): $message';
 }
 
 extension _Let<T extends Object> on T {
