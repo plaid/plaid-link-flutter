@@ -99,8 +99,8 @@ class LinkEvent {
 class LinkEventMetadata {
   const LinkEventMetadata({
     required this.linkSessionId,
-    required this.timestamp,
     required this.viewName,
+    this.timestamp,
     this.accountNumberMask,
     this.mfaType,
     this.requestId,
@@ -113,6 +113,7 @@ class LinkEventMetadata {
     this.institutionSearchQuery,
     this.isUpdateMode,
     this.matchReason,
+    this.routingNumber,
     this.issueId,
     this.issueDescription,
     this.issueDetectedAt,
@@ -134,13 +135,14 @@ class LinkEventMetadata {
       institutionId: map.optionalStringValue('institutionId'),
       institutionName: map.optionalStringValue('institutionName'),
       institutionSearchQuery: map.optionalStringValue('institutionSearchQuery'),
-      isUpdateMode: map.optionalStringValue('isUpdateMode'),
+      isUpdateMode: map.boolValue('isUpdateMode'),
       matchReason: map.optionalStringValue('matchReason'),
+      routingNumber: map.optionalStringValue('routingNumber'),
       issueId: map.optionalStringValue('issueId'),
       issueDescription: map.optionalStringValue('issueDescription'),
       issueDetectedAt: map.optionalStringValue('issueDetectedAt'),
       selection: map.optionalStringValue('selection'),
-      timestamp: map.stringValue('timestamp'),
+      timestamp: map.dateTimeValue('timestamp'),
       metadataJson:
           map.optionalStringValue('metadataJson') ??
           map.optionalStringValue('metadata_json'),
@@ -159,13 +161,14 @@ class LinkEventMetadata {
   final String? institutionId;
   final String? institutionName;
   final String? institutionSearchQuery;
-  final String? isUpdateMode;
+  final bool? isUpdateMode;
   final String? matchReason;
+  final String? routingNumber;
   final String? issueId;
   final String? issueDescription;
   final String? issueDetectedAt;
   final String? selection;
-  final String timestamp;
+  final DateTime? timestamp;
   final String? metadataJson;
 }
 
@@ -174,7 +177,6 @@ class LinkError {
     required this.errorCode,
     required this.errorType,
     required this.errorMessage,
-    this.errorDisplayMessage,
     this.displayMessage,
     this.errorJson,
   });
@@ -184,7 +186,6 @@ class LinkError {
       errorCode: map.stringValue('errorCode'),
       errorType: map.stringValue('errorType'),
       errorMessage: map.stringValue('errorMessage'),
-      errorDisplayMessage: map.optionalStringValue('errorDisplayMessage'),
       displayMessage: map.optionalStringValue('displayMessage'),
       errorJson: map.optionalStringValue('errorJson'),
     );
@@ -193,7 +194,6 @@ class LinkError {
   final String errorCode;
   final String errorType;
   final String errorMessage;
-  final String? errorDisplayMessage;
   final String? displayMessage;
   final String? errorJson;
 }
@@ -410,6 +410,29 @@ extension _MapParsing on Map<Object?, Object?> {
       return null;
     }
     return value.toString();
+  }
+
+  bool? boolValue(String key) {
+    final value = this[key];
+    if (value == null) {
+      return null;
+    }
+    if (value is bool) {
+      return value;
+    }
+    return switch (value.toString().toLowerCase()) {
+      'true' => true,
+      'false' => false,
+      _ => null,
+    };
+  }
+
+  DateTime? dateTimeValue(String key) {
+    final value = optionalStringValue(key);
+    if (value == null) {
+      return null;
+    }
+    return DateTime.tryParse(value);
   }
 
   Map<Object?, Object?> mapValue(String key) {
