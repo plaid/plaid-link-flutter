@@ -35,10 +35,13 @@ void main() {
   });
 
   test('createPlaidLinkSession invokes native method', () async {
-    await platform.createPlaidLinkSession('link-sandbox-token');
+    await platform.createPlaidLinkSession('link-sandbox-token', 7);
 
     expect(calls.single.method, 'createPlaidLinkSession');
-    expect(calls.single.arguments, {'token': 'link-sandbox-token'});
+    expect(calls.single.arguments, {
+      'token': 'link-sandbox-token',
+      'sessionId': 7,
+    });
   });
 
   test('openLinkSession invokes native method', () async {
@@ -49,10 +52,13 @@ void main() {
   });
 
   test('createPlaidLayerSession invokes native method', () async {
-    await platform.createPlaidLayerSession('link-sandbox-layer-token');
+    await platform.createPlaidLayerSession('link-sandbox-layer-token', 8);
 
     expect(calls.single.method, 'createPlaidLayerSession');
-    expect(calls.single.arguments, {'token': 'link-sandbox-layer-token'});
+    expect(calls.single.arguments, {
+      'token': 'link-sandbox-layer-token',
+      'sessionId': 8,
+    });
   });
 
   test('openLayerSession invokes native method', () async {
@@ -83,10 +89,13 @@ void main() {
   );
 
   test('createPlaidHeadlessSession invokes native method', () async {
-    await platform.createPlaidHeadlessSession('link-sandbox-headless-token');
+    await platform.createPlaidHeadlessSession('link-sandbox-headless-token', 9);
 
     expect(calls.single.method, 'createPlaidHeadlessSession');
-    expect(calls.single.arguments, {'token': 'link-sandbox-headless-token'});
+    expect(calls.single.arguments, {
+      'token': 'link-sandbox-headless-token',
+      'sessionId': 9,
+    });
   });
 
   test('startHeadlessSession invokes native method', () async {
@@ -154,7 +163,7 @@ void main() {
         });
 
     await expectLater(
-      platform.createPlaidLinkSession('link-sandbox-token'),
+      platform.createPlaidLinkSession('link-sandbox-token', 1),
       throwsA(
         isA<PlaidLinkException>()
             .having(
@@ -195,6 +204,40 @@ void main() {
 
     await expectLater(
       platform.embeddedSuccessEvents(42),
+      emits(
+        isA<LinkSuccess>().having(
+          (success) => success.publicToken,
+          'publicToken',
+          'public-token',
+        ),
+      ),
+    );
+  });
+
+  test('per-session streams filter events by sessionId', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockStreamHandler(
+          eventChannel,
+          MockStreamHandler.inline(
+            onListen: (arguments, events) {
+              events.success({
+                'type': 'success',
+                'sessionId': 1,
+                'payload': successPayload('wrong-session-token'),
+              });
+              events.success({
+                'type': 'success',
+                'sessionId': 2,
+                'payload': successPayload('public-token'),
+              });
+            },
+          ),
+        );
+
+    // Use a fresh instance so the broadcast stream binds to this test's mock
+    // handler rather than an earlier test's cached stream.
+    await expectLater(
+      MethodChannelPlaidLinkFlutter().onSuccessForSession(2),
       emits(
         isA<LinkSuccess>().having(
           (success) => success.publicToken,

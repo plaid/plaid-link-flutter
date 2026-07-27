@@ -56,6 +56,7 @@ class PlaidLinkFlutterPlugin :
   private var activeSession: PlaidSession? = null
   private var sessionCreationError: Throwable? = null
   private var embeddedOpenInFlight = false
+  private var currentSessionId: Int? = null
 
   override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
     methodChannel = MethodChannel(binding.binaryMessenger, "plaid_link_flutter")
@@ -128,14 +129,14 @@ class PlaidLinkFlutterPlugin :
         if (wasEmbedded) {
           PlaidEmbeddedResultDispatcher.dispatch(plaidResult)
         } else {
-          sendEvent("success", plaidResult.toWritableMap())
+          sendEvent("success", plaidResult.toWritableMap(), currentSessionId)
           clearActiveSession()
         }
       is LinkExit ->
         if (wasEmbedded) {
           PlaidEmbeddedResultDispatcher.dispatch(plaidResult)
         } else {
-          sendEvent("exit", plaidResult.toWritableMap())
+          sendEvent("exit", plaidResult.toWritableMap(), currentSessionId)
           clearActiveSession()
         }
       null -> Unit
@@ -154,6 +155,7 @@ class PlaidLinkFlutterPlugin :
     headlessSession = null
     activeSession = null
     embeddedOpenInFlight = false
+    currentSessionId = null
   }
 
   private fun createPlaidLinkSession(call: MethodCall, result: Result) {
@@ -169,14 +171,17 @@ class PlaidLinkFlutterPlugin :
       return
     }
 
+    val sessionId = call.argument<Int>("sessionId") ?: -1
+
     try {
+      currentSessionId = sessionId
       Plaid.setLinkEventListener { event ->
-        sendEvent("event", event.toWritableMap())
+        sendEvent("event", event.toWritableMap(), sessionId)
       }
       val config =
         LinkTokenConfiguration.Builder()
           .token(token)
-          .onLoad(OnLoadCallback { sendEvent("load", emptyMap()) })
+          .onLoad(OnLoadCallback { sendEvent("load", emptyMap(), sessionId) })
           .build()
       linkSession = Plaid.createPlaidLinkSession(currentActivity, config)
       activeSession = linkSession
@@ -208,9 +213,12 @@ class PlaidLinkFlutterPlugin :
       return
     }
 
+    val sessionId = call.argument<Int>("sessionId") ?: -1
+
     try {
+      currentSessionId = sessionId
       Plaid.setLinkEventListener { event ->
-        sendEvent("event", event.toWritableMap())
+        sendEvent("event", event.toWritableMap(), sessionId)
       }
       val config = LayerTokenConfiguration.Builder().token(token).build()
       layerSession = Plaid.createPlaidLayerSession(currentActivity, config)
@@ -260,14 +268,17 @@ class PlaidLinkFlutterPlugin :
       return
     }
 
+    val sessionId = call.argument<Int>("sessionId") ?: -1
+
     try {
+      currentSessionId = sessionId
       Plaid.setLinkEventListener { event ->
-        sendEvent("event", event.toWritableMap())
+        sendEvent("event", event.toWritableMap(), sessionId)
       }
       val config =
         LinkTokenConfiguration.Builder()
           .token(token)
-          .onLoad(OnLoadCallback { sendEvent("load", emptyMap()) })
+          .onLoad(OnLoadCallback { sendEvent("load", emptyMap(), sessionId) })
           .build()
       headlessSession = Plaid.createPlaidHeadlessSession(currentActivity, config)
       activeSession = headlessSession
@@ -326,9 +337,13 @@ class PlaidLinkFlutterPlugin :
     embeddedOpenInFlight = true
   }
 
-  private fun sendEvent(type: String, payload: Map<String, Any>) {
+  private fun sendEvent(type: String, payload: Map<String, Any>, sessionId: Int? = null) {
     activity?.runOnUiThread {
-      eventSink?.success(mapOf("type" to type, "payload" to payload))
+      val event = mutableMapOf<String, Any>("type" to type, "payload" to payload)
+      if (sessionId != null) {
+        event["sessionId"] = sessionId
+      }
+      eventSink?.success(event)
     }
   }
 

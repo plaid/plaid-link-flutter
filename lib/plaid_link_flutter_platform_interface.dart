@@ -33,6 +33,22 @@ abstract class PlaidLinkFlutterPlatform extends PlatformInterface {
     throw UnimplementedError('onLoad has not been implemented.');
   }
 
+  Stream<LinkSuccess> onSuccessForSession(int sessionId) {
+    throw UnimplementedError('onSuccessForSession() has not been implemented.');
+  }
+
+  Stream<LinkExit> onExitForSession(int sessionId) {
+    throw UnimplementedError('onExitForSession() has not been implemented.');
+  }
+
+  Stream<LinkEvent> onEventForSession(int sessionId) {
+    throw UnimplementedError('onEventForSession() has not been implemented.');
+  }
+
+  Stream<void> onLoadForSession(int sessionId) {
+    throw UnimplementedError('onLoadForSession() has not been implemented.');
+  }
+
   Stream<LinkSuccess> embeddedSuccessEvents(int viewId) {
     throw UnimplementedError(
       'embeddedSuccessEvents() has not been implemented.',
@@ -55,7 +71,7 @@ abstract class PlaidLinkFlutterPlatform extends PlatformInterface {
     throw UnimplementedError('getSdkVersion() has not been implemented.');
   }
 
-  Future<void> createPlaidLinkSession(String token) {
+  Future<void> createPlaidLinkSession(String token, int sessionId) {
     throw UnimplementedError(
       'createPlaidLinkSession() has not been implemented.',
     );
@@ -65,7 +81,7 @@ abstract class PlaidLinkFlutterPlatform extends PlatformInterface {
     throw UnimplementedError('openLinkSession() has not been implemented.');
   }
 
-  Future<void> createPlaidLayerSession(String token) {
+  Future<void> createPlaidLayerSession(String token, int sessionId) {
     throw UnimplementedError(
       'createPlaidLayerSession() has not been implemented.',
     );
@@ -79,7 +95,7 @@ abstract class PlaidLinkFlutterPlatform extends PlatformInterface {
     throw UnimplementedError('submitLayerData() has not been implemented.');
   }
 
-  Future<void> createPlaidHeadlessSession(String token) {
+  Future<void> createPlaidHeadlessSession(String token, int sessionId) {
     throw UnimplementedError(
       'createPlaidHeadlessSession() has not been implemented.',
     );
