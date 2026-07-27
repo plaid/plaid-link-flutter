@@ -98,14 +98,17 @@ class PlaidLink {
 StreamSubscription<LinkSuccess>? _successSubscription;
 StreamSubscription<LinkExit>? _exitSubscription;
 StreamSubscription<LinkEvent>? _eventSubscription;
+StreamSubscription<void>? _loadSubscription;
 
 void _cleanupListeners() {
   _successSubscription?.cancel();
   _exitSubscription?.cancel();
   _eventSubscription?.cancel();
+  _loadSubscription?.cancel();
   _successSubscription = null;
   _exitSubscription = null;
   _eventSubscription = null;
+  _loadSubscription = null;
 }
 
 Future<PlaidLinkSession> createPlaidLinkSession(
@@ -129,11 +132,17 @@ Future<PlaidLinkSession> createPlaidLinkSession(
     config.onEvent,
   );
 
+  final onLoad = config.onLoad;
+  if (onLoad != null) {
+    _loadSubscription = PlaidLinkFlutterPlatform.instance.onLoad.listen((_) {
+      onLoad();
+    });
+  }
+
   try {
     await PlaidLinkFlutterPlatform.instance.createPlaidLinkSession(
       config.token,
     );
-    config.onLoad?.call();
     return PlaidLinkSession._();
   } catch (_) {
     _cleanupListeners();
@@ -196,11 +205,17 @@ Future<PlaidHeadlessSession> createPlaidHeadlessSession(
     config.onEvent,
   );
 
+  final onLoad = config.onLoad;
+  if (onLoad != null) {
+    _loadSubscription = PlaidLinkFlutterPlatform.instance.onLoad.listen((_) {
+      onLoad();
+    });
+  }
+
   try {
     await PlaidLinkFlutterPlatform.instance.createPlaidHeadlessSession(
       config.token,
     );
-    config.onLoad?.call();
     return PlaidHeadlessSession._();
   } catch (_) {
     _cleanupListeners();

@@ -50,6 +50,11 @@ class MethodChannelPlaidLinkFlutter extends PlaidLinkFlutterPlatform {
   }
 
   @override
+  Stream<void> get onLoad {
+    return _nativeEvents.where((event) => event['type'] == 'load').map((_) {});
+  }
+
+  @override
   Stream<LinkSuccess> embeddedSuccessEvents(int viewId) {
     return _embeddedEvents(
       'embeddedSuccess',

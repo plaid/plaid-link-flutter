@@ -29,6 +29,10 @@ abstract class PlaidLinkFlutterPlatform extends PlatformInterface {
     throw UnimplementedError('onEvent has not been implemented.');
   }
 
+  Stream<void> get onLoad {
+    throw UnimplementedError('onLoad has not been implemented.');
+  }
+
   Stream<LinkSuccess> embeddedSuccessEvents(int viewId) {
     throw UnimplementedError(
       'embeddedSuccessEvents() has not been implemented.',

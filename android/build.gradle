@@ -1,7 +1,7 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 group = "com.plaid.plaid_link_flutter"
-version = "1.0-SNAPSHOT"
+version = "1.0.0-beta.1"
 
 buildscript {
     ext.kotlin_version = "2.3.10"

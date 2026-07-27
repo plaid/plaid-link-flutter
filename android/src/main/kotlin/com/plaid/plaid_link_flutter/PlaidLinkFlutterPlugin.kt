@@ -55,6 +55,7 @@ class PlaidLinkFlutterPlugin :
   private var headlessSession: PlaidHeadlessSession? = null
   private var activeSession: PlaidSession? = null
   private var sessionCreationError: Throwable? = null
+  private var embeddedOpenInFlight = false
 
   override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
     methodChannel = MethodChannel(binding.binaryMessenger, "plaid_link_flutter")
@@ -63,7 +64,7 @@ class PlaidLinkFlutterPlugin :
     eventChannel.setStreamHandler(this)
     binding.platformViewRegistry.registerViewFactory(
       "plaid_link_flutter/embedded_search",
-      PlaidEmbeddedSearchViewFactory(::sendEmbeddedEvent, { activity }),
+      PlaidEmbeddedSearchViewFactory(::sendEmbeddedEvent, { activity }, ::markEmbeddedOpen),
     )
   }
 
@@ -116,17 +117,27 @@ class PlaidLinkFlutterPlugin :
       return false
     }
 
-    when (val plaidResult = Plaid.parseResult(Plaid.LINK_REQUEST_CODE, resultCode, data)) {
-      is LinkSuccess -> {
-        PlaidEmbeddedResultDispatcher.dispatch(plaidResult)
-        sendEvent("success", plaidResult.toWritableMap())
-        clearActiveSession()
-      }
-      is LinkExit -> {
-        PlaidEmbeddedResultDispatcher.dispatch(plaidResult)
-        sendEvent("exit", plaidResult.toWritableMap())
-        clearActiveSession()
-      }
+    // A Link result belongs to exactly one flow: the embedded view that launched it,
+    // or the current top-level session. Dispatching to both cross-delivers callbacks
+    // between embedded and regular sessions.
+    val plaidResult = Plaid.parseResult(Plaid.LINK_REQUEST_CODE, resultCode, data)
+    val wasEmbedded = embeddedOpenInFlight
+    embeddedOpenInFlight = false
+    when (plaidResult) {
+      is LinkSuccess ->
+        if (wasEmbedded) {
+          PlaidEmbeddedResultDispatcher.dispatch(plaidResult)
+        } else {
+          sendEvent("success", plaidResult.toWritableMap())
+          clearActiveSession()
+        }
+      is LinkExit ->
+        if (wasEmbedded) {
+          PlaidEmbeddedResultDispatcher.dispatch(plaidResult)
+        } else {
+          sendEvent("exit", plaidResult.toWritableMap())
+          clearActiveSession()
+        }
       null -> Unit
     }
     return true
@@ -135,6 +146,14 @@ class PlaidLinkFlutterPlugin :
   override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
     methodChannel.setMethodCallHandler(null)
     eventChannel.setStreamHandler(null)
+    // Release the process-global Link event listener so its lambda stops retaining
+    // this plugin instance (and routing events to a torn-down engine).
+    Plaid.setLinkEventListener { _ -> }
+    linkSession = null
+    layerSession = null
+    headlessSession = null
+    activeSession = null
+    embeddedOpenInFlight = false
   }
 
   private fun createPlaidLinkSession(call: MethodCall, result: Result) {
@@ -157,11 +176,12 @@ class PlaidLinkFlutterPlugin :
       val config =
         LinkTokenConfiguration.Builder()
           .token(token)
-          .onLoad(OnLoadCallback { result.success(null) })
+          .onLoad(OnLoadCallback { sendEvent("load", emptyMap()) })
           .build()
       linkSession = Plaid.createPlaidLinkSession(currentActivity, config)
       activeSession = linkSession
       sessionCreationError = null
+      result.success(null)
     } catch (error: Throwable) {
       sessionCreationError = error
       result.error(
@@ -247,11 +267,12 @@ class PlaidLinkFlutterPlugin :
       val config =
         LinkTokenConfiguration.Builder()
           .token(token)
-          .onLoad(OnLoadCallback { result.success(null) })
+          .onLoad(OnLoadCallback { sendEvent("load", emptyMap()) })
           .build()
       headlessSession = Plaid.createPlaidHeadlessSession(currentActivity, config)
       activeSession = headlessSession
       sessionCreationError = null
+      result.success(null)
     } catch (error: Throwable) {
       sessionCreationError = error
       result.error(
@@ -280,6 +301,7 @@ class PlaidLinkFlutterPlugin :
     }
 
     try {
+      embeddedOpenInFlight = false
       activeSession = session
       session.open(currentActivity)
       result.success(null)
@@ -295,6 +317,10 @@ class PlaidLinkFlutterPlugin :
       headlessSession -> headlessSession = null
     }
     activeSession = null
+  }
+
+  private fun markEmbeddedOpen() {
+    embeddedOpenInFlight = true
   }
 
   private fun sendCreationExit(defaultMessage: String) {
@@ -331,6 +357,7 @@ class PlaidLinkFlutterPlugin :
 private class PlaidEmbeddedSearchViewFactory(
   private val sendEmbeddedEvent: (Int, String, Map<String, Any>) -> Unit,
   private val activityProvider: () -> Activity?,
+  private val markEmbeddedOpen: () -> Unit,
 ) : PlatformViewFactory(StandardMessageCodec.INSTANCE) {
   override fun create(context: Context, viewId: Int, args: Any?): PlatformView {
     val params = args as? Map<*, *> ?: emptyMap<Any, Any>()
@@ -340,6 +367,7 @@ private class PlaidEmbeddedSearchViewFactory(
       token = params["token"] as? String ?: "",
       sendEmbeddedEvent = sendEmbeddedEvent,
       activityProvider = activityProvider,
+      markEmbeddedOpen = markEmbeddedOpen,
     )
   }
 }
@@ -350,6 +378,7 @@ private class PlaidEmbeddedSearchPlatformView(
   token: String,
   private val sendEmbeddedEvent: (Int, String, Map<String, Any>) -> Unit,
   private val activityProvider: () -> Activity?,
+  private val markEmbeddedOpen: () -> Unit,
 ) : PlatformView {
   private val container = FrameLayout(context)
   private val resultHandler: (LinkResult) -> Unit = ::handleResult
@@ -374,6 +403,7 @@ private class PlaidEmbeddedSearchPlatformView(
           config,
           OnLinkContinuation { session ->
             val activity = activityProvider() ?: return@OnLinkContinuation
+            markEmbeddedOpen()
             session.open(activity)
           },
         )
