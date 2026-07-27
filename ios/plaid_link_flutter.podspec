@@ -4,7 +4,7 @@
 #
 Pod::Spec.new do |s|
   s.name             = 'plaid_link_flutter'
-  s.version          = '0.0.1'
+  s.version          = '1.0.0-beta.1'
   s.summary          = 'Plaid Link Flutter SDK.'
   s.description      = <<-DESC
 Official Flutter plugin for Plaid Link.

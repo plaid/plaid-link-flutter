@@ -16,6 +16,8 @@ class FakePlaidLinkFlutterPlatform
       StreamController<LinkExit>.broadcast();
   final StreamController<LinkEvent> eventController =
       StreamController<LinkEvent>.broadcast();
+  final StreamController<void> loadController =
+      StreamController<void>.broadcast();
   final Map<int, StreamController<LinkSuccess>> embeddedSuccessControllers =
       <int, StreamController<LinkSuccess>>{};
   final Map<int, StreamController<LinkExit>> embeddedExitControllers =
@@ -45,6 +47,9 @@ class FakePlaidLinkFlutterPlatform
 
   @override
   Stream<LinkEvent> get onEvent => eventController.stream;
+
+  @override
+  Stream<void> get onLoad => loadController.stream;
 
   @override
   Stream<LinkSuccess> embeddedSuccessEvents(int viewId) {
@@ -130,6 +135,7 @@ class FakePlaidLinkFlutterPlatform
     await successController.close();
     await exitController.close();
     await eventController.close();
+    await loadController.close();
     for (final controller in embeddedSuccessControllers.values) {
       await controller.close();
     }
@@ -172,6 +178,32 @@ void main() {
 
     expect(fakePlatform.createdToken, 'link-sandbox-token');
     expect(fakePlatform.openedFullScreen, isTrue);
+
+    await fakePlatform.dispose();
+  });
+
+  test('onLoad fires from the load event, not from session creation', () async {
+    final fakePlatform = FakePlaidLinkFlutterPlatform();
+    PlaidLinkFlutterPlatform.instance = fakePlatform;
+    var loadCount = 0;
+
+    await createPlaidLinkSession(
+      LinkTokenConfiguration(
+        token: 'link-sandbox-token',
+        onSuccess: (_) {},
+        onExit: (_) {},
+        onEvent: (_) {},
+        onLoad: () => loadCount++,
+      ),
+    );
+
+    // Creating the session must not resolve or fire onLoad on its own.
+    expect(loadCount, 0);
+
+    fakePlatform.loadController.add(null);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(loadCount, 1);
 
     await fakePlatform.dispose();
   });

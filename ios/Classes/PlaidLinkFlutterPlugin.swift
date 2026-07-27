@@ -4,7 +4,7 @@ import UIKit
 
 @objc(PlaidFlutterPlugin)
 public final class PlaidFlutterPlugin: NSObject {
-  @objc public static let sdkVersion: String = "0.0.1"
+  @objc public static let sdkVersion: String = "1.0.0-beta.1"
 }
 
 public class PlaidLinkFlutterPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
@@ -94,10 +94,8 @@ public class PlaidLinkFlutterPlugin: NSObject, FlutterPlugin, FlutterStreamHandl
       self?.sendEvent(type: "event", payload: event.asDictionary)
     }
 
-    let onLoad: OnLoadHandler = {
-      DispatchQueue.main.async {
-        result(nil)
-      }
+    let onLoad: OnLoadHandler = { [weak self] in
+      self?.sendEvent(type: "load", payload: [:])
     }
 
     let configuration = LinkTokenConfiguration(
@@ -111,6 +109,7 @@ public class PlaidLinkFlutterPlugin: NSObject, FlutterPlugin, FlutterStreamHandl
     do {
       linkSession = try Plaid.createPlaidLinkSession(configuration: configuration)
       sessionCreationError = nil
+      result(nil)
     } catch {
       sessionCreationError = error
       result(
@@ -194,10 +193,8 @@ public class PlaidLinkFlutterPlugin: NSObject, FlutterPlugin, FlutterStreamHandl
       self?.sendEvent(type: "event", payload: event.asDictionary)
     }
 
-    let onLoad: OnLoadHandler = {
-      DispatchQueue.main.async {
-        result(nil)
-      }
+    let onLoad: OnLoadHandler = { [weak self] in
+      self?.sendEvent(type: "load", payload: [:])
     }
 
     let configuration = LinkTokenConfiguration(
@@ -211,6 +208,7 @@ public class PlaidLinkFlutterPlugin: NSObject, FlutterPlugin, FlutterStreamHandl
     do {
       headlessSession = try Plaid.createHeadlessSession(configuration: configuration)
       sessionCreationError = nil
+      result(nil)
     } catch {
       sessionCreationError = error
       result(
