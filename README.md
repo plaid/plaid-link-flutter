@@ -190,7 +190,9 @@ The app displays success, exit, and event callback results.
 
 ## Errors And Troubleshooting
 
-Create/open methods can throw `PlatformException`. Common plugin error codes:
+Create, open, start, and submit methods throw `PlaidLinkException`, which exposes
+a typed `PlaidLinkErrorType type`, the raw `String code`, and a `message`. Switch
+on `type` (with an `unknown` fallback) or read `code` directly. Common codes:
 
 - `INVALID_TOKEN`: the token argument was empty.
 - `LINK_SESSION_CREATE_ERROR`: native Link session creation failed.
@@ -199,6 +201,7 @@ Create/open methods can throw `PlatformException`. Common plugin error codes:
 - `PLAID_NO_ACTIVITY`: Android could not find the current `Activity`.
 - `PLAID_NO_VC`: iOS could not find a presenting view controller.
 - `PLAID_NO_LAYER_SESSION`: `submit` was called before creating a Layer session.
+- `PLAID_NO_SESSION`: `open`/`start` was called before a session was created.
 - `PLAID_OPEN_ERROR`: Android failed to open or start the native session.
 
 `syncFinanceKit` throws `FinanceKitException` instead of exposing the raw

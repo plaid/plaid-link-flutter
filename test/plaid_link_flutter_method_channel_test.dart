@@ -144,6 +144,30 @@ void main() {
     },
   );
 
+  test('Link methods throw PlaidLinkException from platform errors', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (methodCall) async {
+          throw PlatformException(
+            code: 'LINK_SESSION_CREATE_ERROR',
+            message: 'native failure',
+          );
+        });
+
+    await expectLater(
+      platform.createPlaidLinkSession('link-sandbox-token'),
+      throwsA(
+        isA<PlaidLinkException>()
+            .having(
+              (error) => error.type,
+              'type',
+              PlaidLinkErrorType.linkSessionCreateError,
+            )
+            .having((error) => error.code, 'code', 'LINK_SESSION_CREATE_ERROR')
+            .having((error) => error.message, 'message', 'native failure'),
+      ),
+    );
+  });
+
   test('embedded streams filter events by viewId', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockStreamHandler(

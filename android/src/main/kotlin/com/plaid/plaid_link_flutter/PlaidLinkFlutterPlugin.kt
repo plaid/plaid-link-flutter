@@ -289,8 +289,11 @@ class PlaidLinkFlutterPlugin :
 
   private fun openSession(session: PlaidSession?, missingSessionMessage: String, result: Result) {
     if (session == null) {
-      sendCreationExit(missingSessionMessage)
-      result.success(null)
+      result.error(
+        "PLAID_NO_SESSION",
+        sessionCreationError?.localizedMessage ?: missingSessionMessage,
+        null,
+      )
       return
     }
 
@@ -321,24 +324,6 @@ class PlaidLinkFlutterPlugin :
 
   private fun markEmbeddedOpen() {
     embeddedOpenInFlight = true
-  }
-
-  private fun sendCreationExit(defaultMessage: String) {
-    val errorMessage = sessionCreationError?.localizedMessage ?: defaultMessage
-    sendEvent(
-      "exit",
-      exitPayload(
-        error =
-          errorPayload(
-            errorType = "creation error",
-            errorCode = "-1",
-            errorMessage = errorMessage,
-            displayMessage = errorMessage,
-            errorJson = "",
-          ),
-        metadata = emptyExitMetadata(),
-      ),
-    )
   }
 
   private fun sendEvent(type: String, payload: Map<String, Any>) {
@@ -662,13 +647,4 @@ internal fun accountPayload(
     "subtype" to subtype,
     "type" to type,
     "verificationStatus" to verificationStatus,
-  )
-
-internal fun emptyExitMetadata(): Map<String, Any> =
-  exitMetadataPayload(
-    linkSessionId = "",
-    institution = "",
-    status = "",
-    requestId = "",
-    metadataJson = "",
   )
