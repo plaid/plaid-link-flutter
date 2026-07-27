@@ -10,14 +10,16 @@ import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 class FakePlaidLinkFlutterPlatform
     with MockPlatformInterfaceMixin
     implements PlaidLinkFlutterPlatform {
-  final StreamController<LinkSuccess> successController =
-      StreamController<LinkSuccess>.broadcast();
-  final StreamController<LinkExit> exitController =
-      StreamController<LinkExit>.broadcast();
-  final StreamController<LinkEvent> eventController =
-      StreamController<LinkEvent>.broadcast();
-  final StreamController<void> loadController =
-      StreamController<void>.broadcast();
+  // Native events are tagged with the session id they belong to; the fake keeps
+  // that tag so per-session filtering can be exercised.
+  final StreamController<(int, LinkSuccess)> _successController =
+      StreamController<(int, LinkSuccess)>.broadcast();
+  final StreamController<(int, LinkExit)> _exitController =
+      StreamController<(int, LinkExit)>.broadcast();
+  final StreamController<(int, LinkEvent)> _eventController =
+      StreamController<(int, LinkEvent)>.broadcast();
+  final StreamController<int> _loadController =
+      StreamController<int>.broadcast();
   final Map<int, StreamController<LinkSuccess>> embeddedSuccessControllers =
       <int, StreamController<LinkSuccess>>{};
   final Map<int, StreamController<LinkExit>> embeddedExitControllers =
@@ -30,6 +32,9 @@ class FakePlaidLinkFlutterPlatform
   String? createdToken;
   String? createdLayerToken;
   String? createdHeadlessToken;
+  int? lastLinkSessionId;
+  int? lastLayerSessionId;
+  int? lastHeadlessSessionId;
   bool? openedFullScreen;
   bool openedLayer = false;
   bool startedHeadless = false;
@@ -40,16 +45,35 @@ class FakePlaidLinkFlutterPlatform
   bool failCreateHeadlessSession = false;
 
   @override
-  Stream<LinkSuccess> get onSuccess => successController.stream;
+  Stream<LinkSuccess> get onSuccess =>
+      _successController.stream.map((e) => e.$2);
 
   @override
-  Stream<LinkExit> get onExit => exitController.stream;
+  Stream<LinkExit> get onExit => _exitController.stream.map((e) => e.$2);
 
   @override
-  Stream<LinkEvent> get onEvent => eventController.stream;
+  Stream<LinkEvent> get onEvent => _eventController.stream.map((e) => e.$2);
 
   @override
-  Stream<void> get onLoad => loadController.stream;
+  Stream<void> get onLoad => _loadController.stream.map((_) {});
+
+  @override
+  Stream<LinkSuccess> onSuccessForSession(int sessionId) => _successController
+      .stream
+      .where((e) => e.$1 == sessionId)
+      .map((e) => e.$2);
+
+  @override
+  Stream<LinkExit> onExitForSession(int sessionId) =>
+      _exitController.stream.where((e) => e.$1 == sessionId).map((e) => e.$2);
+
+  @override
+  Stream<LinkEvent> onEventForSession(int sessionId) =>
+      _eventController.stream.where((e) => e.$1 == sessionId).map((e) => e.$2);
+
+  @override
+  Stream<void> onLoadForSession(int sessionId) =>
+      _loadController.stream.where((id) => id == sessionId).map((_) {});
 
   @override
   Stream<LinkSuccess> embeddedSuccessEvents(int viewId) {
@@ -83,7 +107,8 @@ class FakePlaidLinkFlutterPlatform
   Future<String?> getSdkVersion() async => '7.0.1';
 
   @override
-  Future<void> createPlaidLinkSession(String token) async {
+  Future<void> createPlaidLinkSession(String token, int sessionId) async {
+    lastLinkSessionId = sessionId;
     if (failCreateLinkSession) {
       throw PlatformException(code: 'CREATE_FAILED', message: 'create failed');
     }
@@ -96,7 +121,8 @@ class FakePlaidLinkFlutterPlatform
   }
 
   @override
-  Future<void> createPlaidLayerSession(String token) async {
+  Future<void> createPlaidLayerSession(String token, int sessionId) async {
+    lastLayerSessionId = sessionId;
     if (failCreateLayerSession) {
       throw PlatformException(code: 'CREATE_FAILED', message: 'create failed');
     }
@@ -114,7 +140,8 @@ class FakePlaidLinkFlutterPlatform
   }
 
   @override
-  Future<void> createPlaidHeadlessSession(String token) async {
+  Future<void> createPlaidHeadlessSession(String token, int sessionId) async {
+    lastHeadlessSessionId = sessionId;
     if (failCreateHeadlessSession) {
       throw PlatformException(code: 'CREATE_FAILED', message: 'create failed');
     }
@@ -131,11 +158,22 @@ class FakePlaidLinkFlutterPlatform
     financeKitConfiguration = config;
   }
 
+  void emitSuccess(int sessionId, LinkSuccess success) =>
+      _successController.add((sessionId, success));
+
+  void emitExit(int sessionId, LinkExit exit) =>
+      _exitController.add((sessionId, exit));
+
+  void emitEvent(int sessionId, LinkEvent event) =>
+      _eventController.add((sessionId, event));
+
+  void emitLoad(int sessionId) => _loadController.add(sessionId);
+
   Future<void> dispose() async {
-    await successController.close();
-    await exitController.close();
-    await eventController.close();
-    await loadController.close();
+    await _successController.close();
+    await _exitController.close();
+    await _eventController.close();
+    await _loadController.close();
     for (final controller in embeddedSuccessControllers.values) {
       await controller.close();
     }
@@ -200,7 +238,7 @@ void main() {
     // Creating the session must not resolve or fire onLoad on its own.
     expect(loadCount, 0);
 
-    fakePlatform.loadController.add(null);
+    fakePlatform.emitLoad(fakePlatform.lastLinkSessionId!);
     await Future<void>.delayed(Duration.zero);
 
     expect(loadCount, 1);
@@ -269,11 +307,12 @@ void main() {
         onEvent: (_) => eventCount++,
       ),
     );
+    final sessionId = fakePlatform.lastLinkSessionId!;
 
-    fakePlatform.successController.add(sampleSuccess());
+    fakePlatform.emitSuccess(sessionId, sampleSuccess());
     await Future<void>.delayed(Duration.zero);
-    fakePlatform.successController.add(sampleSuccess());
-    fakePlatform.eventController.add(sampleEvent());
+    fakePlatform.emitSuccess(sessionId, sampleSuccess());
+    fakePlatform.emitEvent(sessionId, sampleEvent());
     await Future<void>.delayed(Duration.zero);
 
     expect(successCount, 1);
@@ -281,6 +320,35 @@ void main() {
 
     await fakePlatform.dispose();
   });
+
+  test(
+    'dispose cancels callbacks for a created-but-unopened session',
+    () async {
+      final fakePlatform = FakePlaidLinkFlutterPlatform();
+      PlaidLinkFlutterPlatform.instance = fakePlatform;
+      var successCount = 0;
+
+      final session = await createPlaidLinkSession(
+        LinkTokenConfiguration(
+          token: 'link-sandbox-token',
+          onSuccess: (_) => successCount++,
+          onExit: (_) {},
+          onEvent: (_) {},
+        ),
+      );
+      session.dispose();
+
+      fakePlatform.emitSuccess(
+        fakePlatform.lastLinkSessionId!,
+        sampleSuccess(),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(successCount, 0);
+
+      await fakePlatform.dispose();
+    },
+  );
 
   test('create failure cleans up registered listeners', () async {
     final fakePlatform = FakePlaidLinkFlutterPlatform();
@@ -301,8 +369,8 @@ void main() {
       throwsA(isA<PlatformException>()),
     );
 
-    fakePlatform.successController.add(sampleSuccess());
-    fakePlatform.eventController.add(sampleEvent());
+    fakePlatform.emitSuccess(fakePlatform.lastLinkSessionId!, sampleSuccess());
+    fakePlatform.emitEvent(fakePlatform.lastLinkSessionId!, sampleEvent());
     await Future<void>.delayed(Duration.zero);
 
     expect(successCount, 0);
@@ -327,7 +395,7 @@ void main() {
       throwsA(isA<PlatformException>()),
     );
 
-    fakePlatform.successController.add(sampleSuccess());
+    fakePlatform.emitSuccess(fakePlatform.lastLayerSessionId!, sampleSuccess());
     await Future<void>.delayed(Duration.zero);
 
     expect(successCount, 0);
@@ -353,7 +421,10 @@ void main() {
       throwsA(isA<PlatformException>()),
     );
 
-    fakePlatform.successController.add(sampleSuccess());
+    fakePlatform.emitSuccess(
+      fakePlatform.lastHeadlessSessionId!,
+      sampleSuccess(),
+    );
     await Future<void>.delayed(Duration.zero);
 
     expect(successCount, 0);
@@ -361,7 +432,7 @@ void main() {
     await fakePlatform.dispose();
   });
 
-  test('creating a new session replaces previous session listeners', () async {
+  test('sessions receive only their own callbacks (no cross-talk)', () async {
     final fakePlatform = FakePlaidLinkFlutterPlatform();
     PlaidLinkFlutterPlatform.instance = fakePlatform;
     var linkSuccessCount = 0;
@@ -375,6 +446,8 @@ void main() {
         onEvent: (_) {},
       ),
     );
+    final linkSessionId = fakePlatform.lastLinkSessionId!;
+
     await createPlaidHeadlessSession(
       LinkTokenConfiguration(
         token: 'link-sandbox-headless-token',
@@ -383,12 +456,19 @@ void main() {
         onEvent: (_) {},
       ),
     );
+    final headlessSessionId = fakePlatform.lastHeadlessSessionId!;
 
-    fakePlatform.successController.add(sampleSuccess());
+    // The link session's result must reach only the link callback, even though
+    // the headless session was created afterwards and is still alive.
+    fakePlatform.emitSuccess(linkSessionId, sampleSuccess());
     await Future<void>.delayed(Duration.zero);
+    expect(linkSuccessCount, 1);
+    expect(headlessSuccessCount, 0);
 
-    expect(linkSuccessCount, 0);
+    fakePlatform.emitSuccess(headlessSessionId, sampleSuccess());
+    await Future<void>.delayed(Duration.zero);
     expect(headlessSuccessCount, 1);
+    expect(linkSuccessCount, 1);
 
     await fakePlatform.dispose();
   });

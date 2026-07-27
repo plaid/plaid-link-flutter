@@ -55,6 +55,35 @@ class MethodChannelPlaidLinkFlutter extends PlaidLinkFlutterPlatform {
   }
 
   @override
+  Stream<LinkSuccess> onSuccessForSession(int sessionId) {
+    return _sessionEvents(
+      'success',
+      sessionId,
+    ).map((event) => LinkSuccess.fromMap(event.payload()));
+  }
+
+  @override
+  Stream<LinkExit> onExitForSession(int sessionId) {
+    return _sessionEvents(
+      'exit',
+      sessionId,
+    ).map((event) => LinkExit.fromMap(event.payload()));
+  }
+
+  @override
+  Stream<LinkEvent> onEventForSession(int sessionId) {
+    return _sessionEvents(
+      'event',
+      sessionId,
+    ).map((event) => LinkEvent.fromMap(event.payload()));
+  }
+
+  @override
+  Stream<void> onLoadForSession(int sessionId) {
+    return _sessionEvents('load', sessionId).map((_) {});
+  }
+
+  @override
   Stream<LinkSuccess> embeddedSuccessEvents(int viewId) {
     return _embeddedEvents(
       'embeddedSuccess',
@@ -89,8 +118,11 @@ class MethodChannelPlaidLinkFlutter extends PlaidLinkFlutterPlatform {
   }
 
   @override
-  Future<void> createPlaidLinkSession(String token) {
-    return _invokeLink<void>('createPlaidLinkSession', {'token': token});
+  Future<void> createPlaidLinkSession(String token, int sessionId) {
+    return _invokeLink<void>('createPlaidLinkSession', {
+      'token': token,
+      'sessionId': sessionId,
+    });
   }
 
   @override
@@ -99,8 +131,11 @@ class MethodChannelPlaidLinkFlutter extends PlaidLinkFlutterPlatform {
   }
 
   @override
-  Future<void> createPlaidLayerSession(String token) {
-    return _invokeLink<void>('createPlaidLayerSession', {'token': token});
+  Future<void> createPlaidLayerSession(String token, int sessionId) {
+    return _invokeLink<void>('createPlaidLayerSession', {
+      'token': token,
+      'sessionId': sessionId,
+    });
   }
 
   @override
@@ -114,8 +149,11 @@ class MethodChannelPlaidLinkFlutter extends PlaidLinkFlutterPlatform {
   }
 
   @override
-  Future<void> createPlaidHeadlessSession(String token) {
-    return _invokeLink<void>('createPlaidHeadlessSession', {'token': token});
+  Future<void> createPlaidHeadlessSession(String token, int sessionId) {
+    return _invokeLink<void>('createPlaidHeadlessSession', {
+      'token': token,
+      'sessionId': sessionId,
+    });
   }
 
   @override
@@ -140,6 +178,12 @@ class MethodChannelPlaidLinkFlutter extends PlaidLinkFlutterPlatform {
     } on PlatformException catch (error) {
       throw FinanceKitException.fromPlatformException(error);
     }
+  }
+
+  Stream<Map<Object?, Object?>> _sessionEvents(String type, int sessionId) {
+    return _nativeEvents.where((event) {
+      return event['type'] == type && event['sessionId'] == sessionId;
+    });
   }
 
   Stream<Map<Object?, Object?>> _embeddedEvents(String type, int viewId) {

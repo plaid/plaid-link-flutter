@@ -80,22 +80,24 @@ public class PlaidLinkFlutterPlugin: NSObject, FlutterPlugin, FlutterStreamHandl
       return
     }
 
+    let sessionId = arguments["sessionId"] as? Int ?? -1
+
     let onSuccess: OnSuccessHandler = { [weak self] success in
-      self?.sendEvent(type: "success", payload: success.asDictionary)
+      self?.sendEvent(type: "success", payload: success.asDictionary, sessionId: sessionId)
       self?.linkSession = nil
     }
 
     let onExit: OnExitHandler = { [weak self] exit in
-      self?.sendEvent(type: "exit", payload: exit.asDictionary)
+      self?.sendEvent(type: "exit", payload: exit.asDictionary, sessionId: sessionId)
       self?.linkSession = nil
     }
 
     let onEvent: OnEventHandler = { [weak self] event in
-      self?.sendEvent(type: "event", payload: event.asDictionary)
+      self?.sendEvent(type: "event", payload: event.asDictionary, sessionId: sessionId)
     }
 
     let onLoad: OnLoadHandler = { [weak self] in
-      self?.sendEvent(type: "load", payload: [:])
+      self?.sendEvent(type: "load", payload: [:], sessionId: sessionId)
     }
 
     let configuration = LinkTokenConfiguration(
@@ -132,18 +134,20 @@ public class PlaidLinkFlutterPlugin: NSObject, FlutterPlugin, FlutterStreamHandl
       return
     }
 
+    let sessionId = arguments["sessionId"] as? Int ?? -1
+
     let onSuccess: OnSuccessHandler = { [weak self] success in
-      self?.sendEvent(type: "success", payload: success.asDictionary)
+      self?.sendEvent(type: "success", payload: success.asDictionary, sessionId: sessionId)
       self?.layerSession = nil
     }
 
     let onExit: OnExitHandler = { [weak self] exit in
-      self?.sendEvent(type: "exit", payload: exit.asDictionary)
+      self?.sendEvent(type: "exit", payload: exit.asDictionary, sessionId: sessionId)
       self?.layerSession = nil
     }
 
     let onEvent: OnEventHandler = { [weak self] event in
-      self?.sendEvent(type: "event", payload: event.asDictionary)
+      self?.sendEvent(type: "event", payload: event.asDictionary, sessionId: sessionId)
     }
 
     let configuration = LayerTokenConfiguration(
@@ -179,22 +183,24 @@ public class PlaidLinkFlutterPlugin: NSObject, FlutterPlugin, FlutterStreamHandl
       return
     }
 
+    let sessionId = arguments["sessionId"] as? Int ?? -1
+
     let onSuccess: OnSuccessHandler = { [weak self] success in
-      self?.sendEvent(type: "success", payload: success.asDictionary)
+      self?.sendEvent(type: "success", payload: success.asDictionary, sessionId: sessionId)
       self?.headlessSession = nil
     }
 
     let onExit: OnExitHandler = { [weak self] exit in
-      self?.sendEvent(type: "exit", payload: exit.asDictionary)
+      self?.sendEvent(type: "exit", payload: exit.asDictionary, sessionId: sessionId)
       self?.headlessSession = nil
     }
 
     let onEvent: OnEventHandler = { [weak self] event in
-      self?.sendEvent(type: "event", payload: event.asDictionary)
+      self?.sendEvent(type: "event", payload: event.asDictionary, sessionId: sessionId)
     }
 
     let onLoad: OnLoadHandler = { [weak self] in
-      self?.sendEvent(type: "load", payload: [:])
+      self?.sendEvent(type: "load", payload: [:], sessionId: sessionId)
     }
 
     let configuration = LinkTokenConfiguration(
@@ -363,9 +369,13 @@ public class PlaidLinkFlutterPlugin: NSObject, FlutterPlugin, FlutterStreamHandl
     )
   }
 
-  private func sendEvent(type: String, payload: [String: Any]) {
+  private func sendEvent(type: String, payload: [String: Any], sessionId: Int? = nil) {
     DispatchQueue.main.async { [weak self] in
-      self?.eventSink?(["type": type, "payload": payload])
+      var event: [String: Any] = ["type": type, "payload": payload]
+      if let sessionId = sessionId {
+        event["sessionId"] = sessionId
+      }
+      self?.eventSink?(event)
     }
   }
 

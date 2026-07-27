@@ -184,8 +184,8 @@ The app displays success, exit, and event callback results.
 
 ## Behavior Notes
 
-- The SDK supports one active non-embedded session callback set at a time. Creating a Link, Layer, or Headless session replaces callbacks from the previous non-embedded session.
-- Success and exit callbacks are terminal and clean up listeners. Event callbacks are non-terminal.
+- Each session owns its own callbacks, routed by a per-session id, so multiple sessions never cross-deliver each other's events. The native Link UI is single-active, though: only the most recently created session can actually be opened at a time, so the typical flow is create, then open, then a terminal result.
+- Success and exit callbacks are terminal and automatically dispose the session's listeners. Event callbacks are non-terminal. Call `dispose()` on a session to abandon it if it was created but never opened (for example when the owning widget disposes).
 - Embedded Search is mobile-only. Android currently supports one active embedded search view at a time because the native result callback does not expose a per-view result identifier.
 
 ## Errors And Troubleshooting
@@ -238,6 +238,7 @@ Implemented:
 - `PlaidLayerSession.submit(SubmissionData data)`
 - `createPlaidHeadlessSession`
 - `PlaidHeadlessSession.start()`
+- `PlaidLinkSession.dispose()` (and Layer/Headless) for callback cleanup
 - `syncFinanceKit`
 - `PlaidEmbeddedSearchView`
 - `PlaidLink.sdkVersion`

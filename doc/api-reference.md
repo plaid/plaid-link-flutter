@@ -19,6 +19,7 @@ dart doc
 | `PlaidLayerSession.submit(SubmissionData data)` | `Future<void>` | Submits user-collected data to Layer. |
 | `createPlaidHeadlessSession(LinkTokenConfiguration config)` | `Future<PlaidHeadlessSession>` | Creates a Headless session. |
 | `PlaidHeadlessSession.start()` | `Future<void>` | Starts the Headless session. |
+| `PlaidLinkSession.dispose()` (also on Layer/Headless) | `void` | Cancels the session's callbacks. Runs automatically after a terminal success/exit; call it to abandon a session created but never opened. |
 | `syncFinanceKit(FinanceKitConfiguration config)` | `Future<void>` | Runs iOS FinanceKit sync. Android throws `FinanceKitException`. |
 | `PlaidLink.sdkVersion` | `Future<String?>` | Returns the native Plaid SDK version, not the Flutter package version. |
 | `PlaidLink.onEvent` | `Stream<LinkEvent>` | Process-wide event stream for advanced observers. Prefer per-session callbacks. |
@@ -43,18 +44,6 @@ dart doc
 | `onSuccess` | `void Function(LinkSuccess)` | No | Terminal callback. |
 | `onExit` | `void Function(LinkExit)` | Yes | Terminal callback. |
 | `onEvent` | `void Function(LinkEvent)` | Yes | Non-terminal callback. |
-
-### `EmbeddedLinkTokenConfiguration`
-
-| Field | Type | Nullable | Notes |
-| --- | --- | --- | --- |
-| `token` | `String` | No | Embedded-compatible link token. |
-| `onSuccess` | `void Function(LinkSuccess)` | No | Terminal callback. |
-| `onExit` | `void Function(LinkExit)` | Yes | Terminal callback. |
-| `onEvent` | `void Function(LinkEvent)` | Yes | Non-terminal callback. |
-
-This type is available for parity with the native/RN API shape. The Flutter
-widget currently takes the token and callbacks directly.
 
 ### `PlaidEmbeddedSearchView`
 

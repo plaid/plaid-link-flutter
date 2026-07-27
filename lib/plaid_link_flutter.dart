@@ -41,30 +41,53 @@ class LayerTokenConfiguration {
   final LinkOnEventListener? onEvent;
 }
 
-class EmbeddedLinkTokenConfiguration {
-  const EmbeddedLinkTokenConfiguration({
-    required this.token,
-    required this.onSuccess,
-    this.onExit,
-    this.onEvent,
-  });
+/// Counter used to give every created session a unique id. Native events are
+/// tagged with this id so each session instance only receives its own
+/// callbacks, even when multiple sessions exist at once.
+int _nextSessionId = 0;
 
-  final String token;
-  final LinkSuccessListener onSuccess;
-  final LinkExitListener? onExit;
-  final LinkOnEventListener? onEvent;
+/// Shared lifecycle for the non-embedded sessions. Each session owns the
+/// callback subscriptions bound to its session id; nothing lives in
+/// module-global state, so sessions never cross-deliver each other's events.
+abstract class _PlaidSession {
+  _PlaidSession._();
+
+  final List<StreamSubscription<Object?>> _subscriptions =
+      <StreamSubscription<Object?>>[];
+  bool _disposed = false;
+
+  void _bind(StreamSubscription<Object?> subscription) {
+    _subscriptions.add(subscription);
+  }
+
+  /// Cancels this session's callback subscriptions.
+  ///
+  /// Called automatically after a terminal `onSuccess`/`onExit`. Call it
+  /// yourself to abandon a session that was created but never opened (for
+  /// example when the owning widget is disposed), so its callbacks cannot fire
+  /// on dead state. Safe to call more than once.
+  void dispose() {
+    if (_disposed) {
+      return;
+    }
+    _disposed = true;
+    for (final subscription in _subscriptions) {
+      subscription.cancel();
+    }
+    _subscriptions.clear();
+  }
 }
 
-class PlaidLinkSession {
-  PlaidLinkSession._();
+class PlaidLinkSession extends _PlaidSession {
+  PlaidLinkSession._() : super._();
 
   Future<void> open([bool fullScreen = false]) {
     return PlaidLinkFlutterPlatform.instance.openLinkSession(fullScreen);
   }
 }
 
-class PlaidLayerSession {
-  PlaidLayerSession._();
+class PlaidLayerSession extends _PlaidSession {
+  PlaidLayerSession._() : super._();
 
   Future<void> open() {
     return PlaidLinkFlutterPlatform.instance.openLayerSession();
@@ -75,8 +98,8 @@ class PlaidLayerSession {
   }
 }
 
-class PlaidHeadlessSession {
-  PlaidHeadlessSession._();
+class PlaidHeadlessSession extends _PlaidSession {
+  PlaidHeadlessSession._() : super._();
 
   Future<void> start() {
     return PlaidLinkFlutterPlatform.instance.startHeadlessSession();
@@ -95,57 +118,36 @@ class PlaidLink {
   }
 }
 
-StreamSubscription<LinkSuccess>? _successSubscription;
-StreamSubscription<LinkExit>? _exitSubscription;
-StreamSubscription<LinkEvent>? _eventSubscription;
-StreamSubscription<void>? _loadSubscription;
-
-void _cleanupListeners() {
-  _successSubscription?.cancel();
-  _exitSubscription?.cancel();
-  _eventSubscription?.cancel();
-  _loadSubscription?.cancel();
-  _successSubscription = null;
-  _exitSubscription = null;
-  _eventSubscription = null;
-  _loadSubscription = null;
-}
-
 Future<PlaidLinkSession> createPlaidLinkSession(
   LinkTokenConfiguration config,
 ) async {
-  _cleanupListeners();
+  final sessionId = _nextSessionId++;
+  final platform = PlaidLinkFlutterPlatform.instance;
+  final session = PlaidLinkSession._();
 
-  _successSubscription = PlaidLinkFlutterPlatform.instance.onSuccess.listen((
-    success,
-  ) {
-    config.onSuccess(success);
-    _cleanupListeners();
-  });
-
-  _exitSubscription = PlaidLinkFlutterPlatform.instance.onExit.listen((exit) {
-    config.onExit(exit);
-    _cleanupListeners();
-  });
-
-  _eventSubscription = PlaidLinkFlutterPlatform.instance.onEvent.listen(
-    config.onEvent,
+  session._bind(
+    platform.onSuccessForSession(sessionId).listen((success) {
+      config.onSuccess(success);
+      session.dispose();
+    }),
   );
-
+  session._bind(
+    platform.onExitForSession(sessionId).listen((exit) {
+      config.onExit(exit);
+      session.dispose();
+    }),
+  );
+  session._bind(platform.onEventForSession(sessionId).listen(config.onEvent));
   final onLoad = config.onLoad;
   if (onLoad != null) {
-    _loadSubscription = PlaidLinkFlutterPlatform.instance.onLoad.listen((_) {
-      onLoad();
-    });
+    session._bind(platform.onLoadForSession(sessionId).listen((_) => onLoad()));
   }
 
   try {
-    await PlaidLinkFlutterPlatform.instance.createPlaidLinkSession(
-      config.token,
-    );
-    return PlaidLinkSession._();
+    await platform.createPlaidLinkSession(config.token, sessionId);
+    return session;
   } catch (_) {
-    _cleanupListeners();
+    session.dispose();
     rethrow;
   }
 }
@@ -153,33 +155,33 @@ Future<PlaidLinkSession> createPlaidLinkSession(
 Future<PlaidLayerSession> createPlaidLayerSession(
   LayerTokenConfiguration config,
 ) async {
-  _cleanupListeners();
+  final sessionId = _nextSessionId++;
+  final platform = PlaidLinkFlutterPlatform.instance;
+  final session = PlaidLayerSession._();
 
-  _successSubscription = PlaidLinkFlutterPlatform.instance.onSuccess.listen((
-    success,
-  ) {
-    config.onSuccess(success);
-    _cleanupListeners();
-  });
-
-  _exitSubscription = PlaidLinkFlutterPlatform.instance.onExit.listen((exit) {
-    config.onExit?.call(exit);
-    _cleanupListeners();
-  });
-
-  if (config.onEvent != null) {
-    _eventSubscription = PlaidLinkFlutterPlatform.instance.onEvent.listen(
-      config.onEvent,
-    );
+  session._bind(
+    platform.onSuccessForSession(sessionId).listen((success) {
+      config.onSuccess(success);
+      session.dispose();
+    }),
+  );
+  final onExit = config.onExit;
+  session._bind(
+    platform.onExitForSession(sessionId).listen((exit) {
+      onExit?.call(exit);
+      session.dispose();
+    }),
+  );
+  final onEvent = config.onEvent;
+  if (onEvent != null) {
+    session._bind(platform.onEventForSession(sessionId).listen(onEvent));
   }
 
   try {
-    await PlaidLinkFlutterPlatform.instance.createPlaidLayerSession(
-      config.token,
-    );
-    return PlaidLayerSession._();
+    await platform.createPlaidLayerSession(config.token, sessionId);
+    return session;
   } catch (_) {
-    _cleanupListeners();
+    session.dispose();
     rethrow;
   }
 }
@@ -187,38 +189,33 @@ Future<PlaidLayerSession> createPlaidLayerSession(
 Future<PlaidHeadlessSession> createPlaidHeadlessSession(
   LinkTokenConfiguration config,
 ) async {
-  _cleanupListeners();
+  final sessionId = _nextSessionId++;
+  final platform = PlaidLinkFlutterPlatform.instance;
+  final session = PlaidHeadlessSession._();
 
-  _successSubscription = PlaidLinkFlutterPlatform.instance.onSuccess.listen((
-    success,
-  ) {
-    config.onSuccess(success);
-    _cleanupListeners();
-  });
-
-  _exitSubscription = PlaidLinkFlutterPlatform.instance.onExit.listen((exit) {
-    config.onExit(exit);
-    _cleanupListeners();
-  });
-
-  _eventSubscription = PlaidLinkFlutterPlatform.instance.onEvent.listen(
-    config.onEvent,
+  session._bind(
+    platform.onSuccessForSession(sessionId).listen((success) {
+      config.onSuccess(success);
+      session.dispose();
+    }),
   );
-
+  session._bind(
+    platform.onExitForSession(sessionId).listen((exit) {
+      config.onExit(exit);
+      session.dispose();
+    }),
+  );
+  session._bind(platform.onEventForSession(sessionId).listen(config.onEvent));
   final onLoad = config.onLoad;
   if (onLoad != null) {
-    _loadSubscription = PlaidLinkFlutterPlatform.instance.onLoad.listen((_) {
-      onLoad();
-    });
+    session._bind(platform.onLoadForSession(sessionId).listen((_) => onLoad()));
   }
 
   try {
-    await PlaidLinkFlutterPlatform.instance.createPlaidHeadlessSession(
-      config.token,
-    );
-    return PlaidHeadlessSession._();
+    await platform.createPlaidHeadlessSession(config.token, sessionId);
+    return session;
   } catch (_) {
-    _cleanupListeners();
+    session.dispose();
     rethrow;
   }
 }
