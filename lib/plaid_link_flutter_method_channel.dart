@@ -90,45 +90,47 @@ class MethodChannelPlaidLinkFlutter extends PlaidLinkFlutterPlatform {
 
   @override
   Future<void> createPlaidLinkSession(String token) {
-    return methodChannel.invokeMethod<void>('createPlaidLinkSession', {
-      'token': token,
-    });
+    return _invokeLink<void>('createPlaidLinkSession', {'token': token});
   }
 
   @override
   Future<void> openLinkSession(bool fullScreen) {
-    return methodChannel.invokeMethod<void>('openLinkSession', {
-      'fullScreen': fullScreen,
-    });
+    return _invokeLink<void>('openLinkSession', {'fullScreen': fullScreen});
   }
 
   @override
   Future<void> createPlaidLayerSession(String token) {
-    return methodChannel.invokeMethod<void>('createPlaidLayerSession', {
-      'token': token,
-    });
+    return _invokeLink<void>('createPlaidLayerSession', {'token': token});
   }
 
   @override
   Future<void> openLayerSession() {
-    return methodChannel.invokeMethod<void>('openLayerSession');
+    return _invokeLink<void>('openLayerSession');
   }
 
   @override
   Future<void> submitLayerData(SubmissionData data) {
-    return methodChannel.invokeMethod<void>('submitLayerData', data.toMap());
+    return _invokeLink<void>('submitLayerData', data.toMap());
   }
 
   @override
   Future<void> createPlaidHeadlessSession(String token) {
-    return methodChannel.invokeMethod<void>('createPlaidHeadlessSession', {
-      'token': token,
-    });
+    return _invokeLink<void>('createPlaidHeadlessSession', {'token': token});
   }
 
   @override
   Future<void> startHeadlessSession() {
-    return methodChannel.invokeMethod<void>('startHeadlessSession');
+    return _invokeLink<void>('startHeadlessSession');
+  }
+
+  /// Invokes a Link method, translating native `PlatformException`s into the
+  /// typed [PlaidLinkException] so callers get a consistent error contract.
+  Future<T?> _invokeLink<T>(String method, [dynamic arguments]) async {
+    try {
+      return await methodChannel.invokeMethod<T>(method, arguments);
+    } on PlatformException catch (error) {
+      throw PlaidLinkException.fromPlatformException(error);
+    }
   }
 
   @override
