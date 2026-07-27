@@ -515,8 +515,25 @@ void main() {
     expect(exit.error, isNull);
     expect(exit.metadata.linkSessionId, '');
     expect(exit.metadata.requestId, '');
-    expect(event.metadata.timestamp, '');
+    expect(event.metadata.timestamp, isNull);
     expect(event.metadata.viewName, '');
+  });
+
+  test('event metadata parses typed primitives', () {
+    final event = LinkEvent.fromMap({
+      'eventName': 'TRANSITION_VIEW',
+      'metadata': {
+        'linkSessionId': 'session-id',
+        'viewName': 'CONNECTED',
+        'timestamp': '2026-07-01T00:00:00Z',
+        'isUpdateMode': 'true',
+        'routingNumber': '110000000',
+      },
+    });
+
+    expect(event.metadata.isUpdateMode, isTrue);
+    expect(event.metadata.routingNumber, '110000000');
+    expect(event.metadata.timestamp, DateTime.parse('2026-07-01T00:00:00Z'));
   });
 }
 
@@ -533,10 +550,6 @@ LinkSuccess sampleSuccess() {
 LinkEvent sampleEvent() {
   return const LinkEvent(
     eventName: 'OPEN',
-    metadata: LinkEventMetadata(
-      linkSessionId: 'session-id',
-      timestamp: '2026-07-01T00:00:00Z',
-      viewName: 'OPEN',
-    ),
+    metadata: LinkEventMetadata(linkSessionId: 'session-id', viewName: 'OPEN'),
   );
 }

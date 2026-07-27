@@ -124,13 +124,14 @@ widget currently takes the token and callbacks directly.
 | `institutionId` | `String` | Yes |
 | `institutionName` | `String` | Yes |
 | `institutionSearchQuery` | `String` | Yes |
-| `isUpdateMode` | `String` | Yes |
+| `isUpdateMode` | `bool` | Yes |
 | `matchReason` | `String` | Yes |
+| `routingNumber` | `String` | Yes |
 | `issueId` | `String` | Yes |
 | `issueDescription` | `String` | Yes |
 | `issueDetectedAt` | `String` | Yes |
 | `selection` | `String` | Yes |
-| `timestamp` | `String` | No |
+| `timestamp` | `DateTime` | Yes |
 | `metadataJson` | `String` | Yes |
 
 ### `LinkError`
@@ -140,7 +141,6 @@ widget currently takes the token and callbacks directly.
 | `errorCode` | `String` | No |
 | `errorType` | `String` | No |
 | `errorMessage` | `String` | No |
-| `errorDisplayMessage` | `String` | Yes |
 | `displayMessage` | `String` | Yes |
 | `errorJson` | `String` | Yes |
 
@@ -205,4 +205,6 @@ widget currently takes the token and callbacks directly.
 | `FinanceKitErrorType.permissionError` | `PERMISSION_ERROR` |
 | `FinanceKitErrorType.linkApiError` | `LINK_API_ERROR` |
 | `FinanceKitErrorType.permissionAccessError` | `PERMISSION_ACCESS_ERROR` |
-| `FinanceKitErrorType.unknown` | Any other code, including platform support errors. |
+| `FinanceKitErrorType.unsupportedAndroid` | `UNSUPPORTED_ANDROID` |
+| `FinanceKitErrorType.unsupportedIosVersion` | `UNSUPPORTED_IOS_VERSION` |
+| `FinanceKitErrorType.unknown` | Any other code. |
