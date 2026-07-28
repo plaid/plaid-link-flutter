@@ -187,6 +187,7 @@ The app displays success, exit, and event callback results.
 - Each session owns its own callbacks, routed by a per-session id, so multiple sessions never cross-deliver each other's events. The native Link UI is single-active, though: only the most recently created session can actually be opened at a time, so the typical flow is create, then open, then a terminal result.
 - Success and exit callbacks are terminal and automatically dispose the session's listeners. Event callbacks are non-terminal. Call `dispose()` on a session to abandon it if it was created but never opened (for example when the owning widget disposes).
 - Embedded Search is mobile-only. Android currently supports one active embedded search view at a time because the native result callback does not expose a per-view result identifier.
+- `PlaidLinkSession.open(fullScreen)` — the `fullScreen` flag applies on iOS (a full-screen modal presentation). On Android it has no effect, because Link opens in its own activity.
 
 ## Errors And Troubleshooting
 
@@ -203,6 +204,7 @@ on `type` (with an `unknown` fallback) or read `code` directly. Common codes:
 - `PLAID_NO_LAYER_SESSION`: `submit` was called before creating a Layer session.
 - `PLAID_NO_SESSION`: `open`/`start` was called before a session was created.
 - `PLAID_OPEN_ERROR`: Android failed to open or start the native session.
+- `PLAID_SUBMIT_ERROR`: Android failed to submit Layer data.
 
 `syncFinanceKit` throws `FinanceKitException` instead of exposing the raw
 `PlatformException`. Known codes include `UNSUPPORTED_ANDROID`,
@@ -223,9 +225,16 @@ Apple FinanceKit entitlement and an eligible Item. Use
 `FinanceKitSyncBehavior.simulated` for development where appropriate.
 
 Use sandbox Link tokens and Plaid test institutions for regular Link, Layer,
-Headless, and Embedded Search smoke tests. Always test the final OAuth redirect
-configuration that will ship: the iOS redirect URI and Universal Link domain
-association, and the Android package name and app link/deep link handling.
+Headless, and Embedded Search smoke tests.
+
+Before shipping OAuth, validate the real redirect configuration on a device:
+
+- iOS: the redirect URI registered in the Plaid Dashboard and the Universal Link
+  domain association (`apple-app-site-association`) for your app.
+- Android: the registered package name and the app link / deep link handling for
+  your redirect URI.
+- The full app-switch round trip (Link to the bank app or browser and back to
+  your app), including returning after the app was backgrounded.
 
 ## Current Scope
 
