@@ -23,8 +23,8 @@ Initial public beta release of the official Plaid Link Flutter SDK.
 
 ### Native SDKs
 
-- iOS: LinkKit `7.0.1`.
-- Android: Plaid Link SDK `6.0.0`.
+- iOS: LinkKit `7.0.5`.
+- Android: Plaid Link SDK `6.1.0`.
 
 ### Beta limitations
 

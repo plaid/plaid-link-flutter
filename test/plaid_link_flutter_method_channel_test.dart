@@ -16,7 +16,7 @@ void main() {
         .setMockMethodCallHandler(channel, (methodCall) async {
           calls.add(methodCall);
           if (methodCall.method == 'getSdkVersion') {
-            return '7.0.1';
+            return '7.0.5';
           }
           return null;
         });
@@ -31,7 +31,7 @@ void main() {
   });
 
   test('getSdkVersion', () async {
-    expect(await platform.getSdkVersion(), '7.0.1');
+    expect(await platform.getSdkVersion(), '7.0.5');
   });
 
   test('createPlaidLinkSession invokes native method', () async {
