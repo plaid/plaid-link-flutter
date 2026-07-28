@@ -188,7 +188,7 @@ class _PlaidLinkSessionScreenState extends State<PlaidLinkSessionScreen> {
             _showResultSheet(
               title: 'Exit',
               rows: [
-                ResultRow('Status', exit.metadata.status ?? ''),
+                ResultRow('Status', exit.metadata.status?.value ?? ''),
                 ResultRow('Error code', exit.error?.errorCode ?? ''),
                 ResultRow('Error message', exit.error?.errorMessage ?? ''),
                 ResultRow('Link session ID', exit.metadata.linkSessionId),
@@ -197,7 +197,7 @@ class _PlaidLinkSessionScreenState extends State<PlaidLinkSessionScreen> {
           },
           onEvent: (event) {
             _events.add(event);
-            if (event.eventName == 'ERROR') {
+            if (event.eventName == LinkEventName.error) {
               setState(() {
                 _state = SessionState.error;
                 _errorMessage =
@@ -381,7 +381,7 @@ class _PlaidLayerSessionScreenState extends State<PlaidLayerSessionScreen> {
             _showResultSheet(
               title: 'Layer Exit',
               rows: [
-                ResultRow('Status', exit.metadata.status ?? ''),
+                ResultRow('Status', exit.metadata.status?.value ?? ''),
                 ResultRow('Error code', exit.error?.errorCode ?? ''),
                 ResultRow('Error message', exit.error?.errorMessage ?? ''),
               ],
@@ -563,7 +563,7 @@ class _PlaidHeadlessSessionScreenState
             _showResultSheet(
               title: 'Headless Exit',
               rows: [
-                ResultRow('Status', exit.metadata.status ?? ''),
+                ResultRow('Status', exit.metadata.status?.value ?? ''),
                 ResultRow('Error code', exit.error?.errorCode ?? ''),
                 ResultRow('Error message', exit.error?.errorMessage ?? ''),
               ],
@@ -753,7 +753,7 @@ class _PlaidEmbeddedSearchScreenState extends State<PlaidEmbeddedSearchScreen> {
                 _showResultSheet(
                   title: 'Embedded Exit',
                   rows: [
-                    ResultRow('Status', exit.metadata.status ?? ''),
+                    ResultRow('Status', exit.metadata.status?.value ?? ''),
                     ResultRow('Error code', exit.error?.errorCode ?? ''),
                     ResultRow('Error message', exit.error?.errorMessage ?? ''),
                   ],

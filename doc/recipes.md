@@ -23,7 +23,7 @@ Future<void> createLink(String linkToken) async {
         print('exit: ${exit.error?.errorMessage}');
       },
       onEvent: (event) {
-        print('event: ${event.eventName}');
+        print('event: ${event.eventName.value}');
       },
       onLoad: () {
         setState(() => _ready = true);
@@ -63,7 +63,7 @@ Future<void> createLayer(String layerToken) async {
         print(exit.error?.errorMessage);
       },
       onEvent: (event) {
-        print(event.eventName);
+        print(event.eventName.value);
       },
     ),
   );
@@ -101,7 +101,7 @@ Future<void> createHeadless(String linkToken) async {
         print(exit.error?.errorMessage);
       },
       onEvent: (event) {
-        print(event.eventName);
+        print(event.eventName.value);
       },
       onLoad: () {
         setState(() => _headlessReady = true);
@@ -132,7 +132,7 @@ SizedBox(
       print(exit.error?.errorMessage);
     },
     onEvent: (event) {
-      print(event.eventName);
+      print(event.eventName.value);
     },
     onLoad: () {
       print('embedded search loaded');

@@ -596,7 +596,29 @@ void main() {
     expect(exit.metadata.linkSessionId, '');
     expect(exit.metadata.requestId, '');
     expect(event.metadata.timestamp, isNull);
-    expect(event.metadata.viewName, '');
+    expect(event.metadata.viewName.value, '');
+  });
+
+  test('typed event/view/status values parse with an unknown fallback', () {
+    final event = LinkEvent.fromMap({
+      'eventName': 'OPEN_OAUTH',
+      'metadata': {
+        'linkSessionId': 'session-id',
+        'viewName': 'CONNECTED',
+        'exitStatus': 'requires_credentials',
+      },
+    });
+    final future = LinkEvent.fromMap({
+      'eventName': 'A_FUTURE_EVENT',
+      'metadata': {'linkSessionId': 'x', 'viewName': 'X'},
+    });
+
+    expect(event.eventName, LinkEventName.openOauth);
+    expect(event.metadata.viewName, LinkViewName.connected);
+    expect(event.metadata.exitStatus, LinkExitStatus.requiresCredentials);
+    // Unrecognized values are preserved verbatim rather than dropped.
+    expect(future.eventName, const LinkEventName('A_FUTURE_EVENT'));
+    expect(future.eventName.value, 'A_FUTURE_EVENT');
   });
 
   test('event metadata parses typed primitives', () {
@@ -629,7 +651,10 @@ LinkSuccess sampleSuccess() {
 
 LinkEvent sampleEvent() {
   return const LinkEvent(
-    eventName: 'OPEN',
-    metadata: LinkEventMetadata(linkSessionId: 'session-id', viewName: 'OPEN'),
+    eventName: LinkEventName.open,
+    metadata: LinkEventMetadata(
+      linkSessionId: 'session-id',
+      viewName: LinkViewName.connected,
+    ),
   );
 }
