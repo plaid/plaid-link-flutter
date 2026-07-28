@@ -57,6 +57,14 @@ dart doc
 
 ## Result Models
 
+Several fields use typed "wire value" wrappers (`LinkEventName`, `LinkViewName`,
+`LinkExitStatus`, `LinkVerificationStatus`, `LinkErrorType`). Each exposes named
+constants (e.g. `LinkEventName.openOauth`) mirroring the values Plaid's native
+SDKs emit, a raw `String value`, and value equality. An unrecognized value is
+preserved verbatim (`LinkEventName('SOMETHING_NEW')`) rather than dropped, so new
+SDK values never crash a consumer. Compare with the constant
+(`event.eventName == LinkEventName.error`) or read `event.eventName.value`.
+
 ### `LinkSuccess`
 
 | Field | Type | Nullable |
@@ -84,7 +92,7 @@ dart doc
 
 | Field | Type | Nullable |
 | --- | --- | --- |
-| `status` | `String` | Yes |
+| `status` | `LinkExitStatus` | Yes |
 | `institution` | `LinkInstitution` | Yes |
 | `linkSessionId` | `String` | No |
 | `requestId` | `String` | No |
@@ -94,7 +102,7 @@ dart doc
 
 | Field | Type | Nullable |
 | --- | --- | --- |
-| `eventName` | `String` | No |
+| `eventName` | `LinkEventName` | No |
 | `metadata` | `LinkEventMetadata` | No |
 
 ### `LinkEventMetadata`
@@ -105,11 +113,11 @@ dart doc
 | `linkSessionId` | `String` | No |
 | `mfaType` | `String` | Yes |
 | `requestId` | `String` | Yes |
-| `viewName` | `String` | No |
+| `viewName` | `LinkViewName` | No |
 | `errorCode` | `String` | Yes |
 | `errorMessage` | `String` | Yes |
-| `errorType` | `String` | Yes |
-| `exitStatus` | `String` | Yes |
+| `errorType` | `LinkErrorType` | Yes |
+| `exitStatus` | `LinkExitStatus` | Yes |
 | `institutionId` | `String` | Yes |
 | `institutionName` | `String` | Yes |
 | `institutionSearchQuery` | `String` | Yes |
@@ -128,7 +136,7 @@ dart doc
 | Field | Type | Nullable |
 | --- | --- | --- |
 | `errorCode` | `String` | No |
-| `errorType` | `String` | No |
+| `errorType` | `LinkErrorType` | No |
 | `errorMessage` | `String` | No |
 | `displayMessage` | `String` | Yes |
 | `errorJson` | `String` | Yes |
@@ -149,7 +157,7 @@ dart doc
 | `mask` | `String` | Yes |
 | `type` | `String` | No |
 | `subtype` | `String` | No |
-| `verificationStatus` | `String` | Yes |
+| `verificationStatus` | `LinkVerificationStatus` | Yes |
 
 ## Layer Submission
 
