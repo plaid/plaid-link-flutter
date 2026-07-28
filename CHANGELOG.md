@@ -34,7 +34,3 @@ Initial public beta release of the official Plaid Link Flutter SDK.
 - FinanceKit live sync requires iOS 17.4 or later, Apple entitlement approval, and an eligible Item.
 - Android Embedded Search supports one active embedded search view at a time.
 - Native SDK/backend Flutter wrapper detection is tracked separately and should be confirmed before stable release.
-
-## 0.0.1
-
-Internal scaffold version. Not intended for public release.
