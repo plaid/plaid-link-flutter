@@ -46,7 +46,7 @@ android {
     }
 
     dependencies {
-        implementation("com.plaid.link:sdk-core:6.0.0")
+        implementation("com.plaid.link:sdk-core:6.1.0")
         testImplementation("org.jetbrains.kotlin:kotlin-test")
         testImplementation("org.mockito:mockito-core:5.0.0")
     }

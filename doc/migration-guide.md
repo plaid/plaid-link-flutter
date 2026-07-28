@@ -26,7 +26,7 @@ your widget state, and call the method on that session.
 | Area | `plaid_flutter` | `plaid_link_flutter` |
 | --- | --- | --- |
 | Package import | `package:plaid_flutter/plaid_flutter.dart` | `package:plaid_link_flutter/plaid_link_flutter.dart` |
-| Native SDKs | iOS 6.x, Android 5.x | iOS LinkKit 7.0.1, Android Link SDK 6.0.0 |
+| Native SDKs | iOS 6.x, Android 5.x | iOS LinkKit 7.0.5, Android Link SDK 6.1.0 |
 | Primary API | Global `PlaidLink.create()` and `PlaidLink.open()` | `createPlaidLinkSession()` returns `PlaidLinkSession` |
 | Callback model | Global streams: `PlaidLink.onSuccess`, `PlaidLink.onExit`, `PlaidLink.onEvent`, `PlaidLink.onLoad` | Per-session callbacks passed in the configuration |
 | Link readiness | Wait for create completion or `onLoad` stream | Use `LinkTokenConfiguration.onLoad` |

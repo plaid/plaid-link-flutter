@@ -11,7 +11,7 @@ void main() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (methodCall) async {
           if (methodCall.method == 'getSdkVersion') {
-            return '7.0.1';
+            return '7.0.5';
           }
           return null;
         });
@@ -32,7 +32,7 @@ void main() {
     expect(find.text('Plaid Headless Session'), findsOneWidget);
     expect(find.text('Plaid Embedded Search'), findsOneWidget);
     expect(find.text('Sync FinanceKit'), findsOneWidget);
-    expect(find.text('SDK: 7.0.1'), findsOneWidget);
+    expect(find.text('SDK: 7.0.5'), findsOneWidget);
   });
 
   testWidgets('Layer screen renders expected controls', (tester) async {
