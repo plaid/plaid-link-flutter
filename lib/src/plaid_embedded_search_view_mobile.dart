@@ -81,17 +81,17 @@ class _PlaidEmbeddedSearchViewState extends State<PlaidEmbeddedSearchView> {
       ..add(
         PlaidLinkFlutterPlatform.instance
             .embeddedSuccessEvents(viewId)
-            .listen(widget.onSuccess),
+            .listen((success) => widget.onSuccess?.call(success)),
       )
       ..add(
         PlaidLinkFlutterPlatform.instance
             .embeddedExitEvents(viewId)
-            .listen(widget.onExit),
+            .listen((exit) => widget.onExit?.call(exit)),
       )
       ..add(
         PlaidLinkFlutterPlatform.instance
             .embeddedLinkEvents(viewId)
-            .listen(widget.onEvent),
+            .listen((event) => widget.onEvent?.call(event)),
       )
       ..add(
         PlaidLinkFlutterPlatform.instance.embeddedLoadEvents(viewId).listen((

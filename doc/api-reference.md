@@ -197,3 +197,35 @@ dart doc
 | `FinanceKitErrorType.unsupportedAndroid` | `UNSUPPORTED_ANDROID` |
 | `FinanceKitErrorType.unsupportedIosVersion` | `UNSUPPORTED_IOS_VERSION` |
 | `FinanceKitErrorType.unknown` | Any other code. |
+
+## Link Errors
+
+### `PlaidLinkException`
+
+Thrown by `createPlaidLinkSession`, the session `open`/`start` calls, and Layer
+`submit`. (`syncFinanceKit` throws `FinanceKitException` instead.) The raw
+platform `code` is always preserved; `type` is `unknown` for any code not
+modeled below.
+
+| Field | Type | Nullable |
+| --- | --- | --- |
+| `type` | `PlaidLinkErrorType` | No |
+| `code` | `String` | No |
+| `message` | `String` | No |
+| `details` | `Object?` | Yes |
+
+### `PlaidLinkErrorType`
+
+| Value | Mapped platform code |
+| --- | --- |
+| `PlaidLinkErrorType.invalidToken` | `INVALID_TOKEN` |
+| `PlaidLinkErrorType.linkSessionCreateError` | `LINK_SESSION_CREATE_ERROR` |
+| `PlaidLinkErrorType.layerSessionCreateError` | `LAYER_SESSION_CREATE_ERROR` |
+| `PlaidLinkErrorType.headlessSessionCreateError` | `HEADLESS_SESSION_CREATE_ERROR` |
+| `PlaidLinkErrorType.noActivity` | `PLAID_NO_ACTIVITY` |
+| `PlaidLinkErrorType.noViewController` | `PLAID_NO_VC` |
+| `PlaidLinkErrorType.noLayerSession` | `PLAID_NO_LAYER_SESSION` |
+| `PlaidLinkErrorType.noSession` | `PLAID_NO_SESSION` |
+| `PlaidLinkErrorType.openError` | `PLAID_OPEN_ERROR` |
+| `PlaidLinkErrorType.submitError` | `PLAID_SUBMIT_ERROR` |
+| `PlaidLinkErrorType.unknown` | Any other code. |

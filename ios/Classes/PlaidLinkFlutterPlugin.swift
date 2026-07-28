@@ -328,7 +328,8 @@ public class PlaidLinkFlutterPlugin: NSObject, FlutterPlugin, FlutterStreamHandl
     let syncBehavior = arguments["syncBehavior"] as? Int ?? 0
 
     if #available(iOS 17.4, *) {
-      let behavior: PlaidFinanceKit.SyncBehavior = syncBehavior == 0 ? .live : .simulated
+      // Only 1 selects simulated; any unexpected value falls back to the live default.
+      let behavior: PlaidFinanceKit.SyncBehavior = syncBehavior == 1 ? .simulated : .live
       PlaidFinanceKit.sync(
         token: token,
         requestAuthorizationIfNeeded: requestAuthorizationIfNeeded,

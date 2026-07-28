@@ -351,6 +351,7 @@ enum PlaidLinkErrorType {
   noLayerSession('PLAID_NO_LAYER_SESSION'),
   noSession('PLAID_NO_SESSION'),
   openError('PLAID_OPEN_ERROR'),
+  submitError('PLAID_SUBMIT_ERROR'),
   unknown('UNKNOWN');
 
   const PlaidLinkErrorType(this.code);

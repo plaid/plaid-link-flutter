@@ -3,6 +3,8 @@ package com.plaid.plaid_link_flutter
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.os.Handler
+import android.os.Looper
 import android.view.View
 import android.widget.FrameLayout
 import com.plaid.link.OnLinkContinuation
@@ -57,6 +59,7 @@ class PlaidLinkFlutterPlugin :
   private var sessionCreationError: Throwable? = null
   private var embeddedOpenInFlight = false
   private var currentSessionId: Int? = null
+  private val mainHandler = Handler(Looper.getMainLooper())
 
   override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
     methodChannel = MethodChannel(binding.binaryMessenger, "plaid_link_flutter")
@@ -246,14 +249,22 @@ class PlaidLinkFlutterPlugin :
       return
     }
 
-    session.submit(
-      SubmissionData(
-        phoneNumber = call.argument<String>("phoneNumber"),
-        dateOfBirth = call.argument<String>("dateOfBirth"),
-        params = call.argument<Map<String, String>>("params"),
-      ),
-    )
-    result.success(null)
+    try {
+      session.submit(
+        SubmissionData(
+          phoneNumber = call.argument<String>("phoneNumber"),
+          dateOfBirth = call.argument<String>("dateOfBirth"),
+          params = call.argument<Map<String, String>>("params"),
+        ),
+      )
+      result.success(null)
+    } catch (error: Throwable) {
+      result.error(
+        "PLAID_SUBMIT_ERROR",
+        error.message ?: "Failed to submit Layer data.",
+        null,
+      )
+    }
   }
 
   private fun createPlaidHeadlessSession(call: MethodCall, result: Result) {
@@ -338,7 +349,9 @@ class PlaidLinkFlutterPlugin :
   }
 
   private fun sendEvent(type: String, payload: Map<String, Any>, sessionId: Int? = null) {
-    activity?.runOnUiThread {
+    // Post to the main looper directly (not activity.runOnUiThread) so events
+    // are not dropped when there is no attached activity.
+    mainHandler.post {
       val event = mutableMapOf<String, Any>("type" to type, "payload" to payload)
       if (sessionId != null) {
         event["sessionId"] = sessionId
@@ -348,7 +361,7 @@ class PlaidLinkFlutterPlugin :
   }
 
   private fun sendEmbeddedEvent(viewId: Int, type: String, payload: Map<String, Any>) {
-    activity?.runOnUiThread {
+    mainHandler.post {
       eventSink?.success(mapOf("type" to type, "viewId" to viewId, "payload" to payload))
     }
   }
