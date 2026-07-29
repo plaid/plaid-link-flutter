@@ -47,6 +47,11 @@ class PlaidLinkFlutterPlugin :
   EventChannel.StreamHandler,
   ActivityAware,
   PluginRegistry.ActivityResultListener {
+  private companion object {
+    const val HANDOFF_EVENT_NAME = "HANDOFF"
+    const val HANDOFF_CLEANUP_DELAY_MS = 3000L
+  }
+
   private lateinit var methodChannel: MethodChannel
   private lateinit var eventChannel: EventChannel
   private var eventSink: EventChannel.EventSink? = null
@@ -59,6 +64,8 @@ class PlaidLinkFlutterPlugin :
   private var sessionCreationError: Throwable? = null
   private var embeddedOpenInFlight = false
   private var currentSessionId: Int? = null
+  private var waitingForHandoffSessionId: Int? = null
+  private var handoffCleanupRunnable: Runnable? = null
   private val mainHandler = Handler(Looper.getMainLooper())
 
   override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
@@ -133,7 +140,7 @@ class PlaidLinkFlutterPlugin :
           PlaidEmbeddedResultDispatcher.dispatch(plaidResult)
         } else {
           sendEvent("success", plaidResult.toWritableMap(), currentSessionId)
-          clearActiveSession()
+          markSessionSucceeded(currentSessionId)
         }
       is LinkExit ->
         if (wasEmbedded) {
@@ -159,6 +166,8 @@ class PlaidLinkFlutterPlugin :
     activeSession = null
     embeddedOpenInFlight = false
     currentSessionId = null
+    waitingForHandoffSessionId = null
+    cancelHandoffCleanup()
   }
 
   private fun createPlaidLinkSession(call: MethodCall, result: Result) {
@@ -177,9 +186,11 @@ class PlaidLinkFlutterPlugin :
     val sessionId = call.argument<Int>("sessionId") ?: -1
 
     try {
+      clearActiveSession()
       currentSessionId = sessionId
       Plaid.setLinkEventListener { event ->
         sendEvent("event", event.toWritableMap(), sessionId)
+        clearSucceededSessionOnHandoff(event, sessionId)
       }
       val config =
         LinkTokenConfiguration.Builder()
@@ -219,9 +230,11 @@ class PlaidLinkFlutterPlugin :
     val sessionId = call.argument<Int>("sessionId") ?: -1
 
     try {
+      clearActiveSession()
       currentSessionId = sessionId
       Plaid.setLinkEventListener { event ->
         sendEvent("event", event.toWritableMap(), sessionId)
+        clearSucceededSessionOnHandoff(event, sessionId)
       }
       val config = LayerTokenConfiguration.Builder().token(token).build()
       layerSession = Plaid.createPlaidLayerSession(currentActivity, config)
@@ -282,9 +295,11 @@ class PlaidLinkFlutterPlugin :
     val sessionId = call.argument<Int>("sessionId") ?: -1
 
     try {
+      clearActiveSession()
       currentSessionId = sessionId
       Plaid.setLinkEventListener { event ->
         sendEvent("event", event.toWritableMap(), sessionId)
+        clearSucceededSessionOnHandoff(event, sessionId)
       }
       val config =
         LinkTokenConfiguration.Builder()
@@ -336,12 +351,43 @@ class PlaidLinkFlutterPlugin :
   }
 
   private fun clearActiveSession() {
+    cancelHandoffCleanup()
     when (activeSession) {
       linkSession -> linkSession = null
       layerSession -> layerSession = null
       headlessSession -> headlessSession = null
     }
     activeSession = null
+    currentSessionId = null
+    waitingForHandoffSessionId = null
+  }
+
+  private fun markSessionSucceeded(sessionId: Int?) {
+    if (sessionId == null || currentSessionId != sessionId) {
+      return
+    }
+
+    waitingForHandoffSessionId = sessionId
+    cancelHandoffCleanup()
+
+    val cleanup = Runnable {
+      if (waitingForHandoffSessionId == sessionId) {
+        clearActiveSession()
+      }
+    }
+    handoffCleanupRunnable = cleanup
+    mainHandler.postDelayed(cleanup, HANDOFF_CLEANUP_DELAY_MS)
+  }
+
+  private fun clearSucceededSessionOnHandoff(event: LinkEvent, sessionId: Int) {
+    if (event.eventName.json == HANDOFF_EVENT_NAME && waitingForHandoffSessionId == sessionId) {
+      clearActiveSession()
+    }
+  }
+
+  private fun cancelHandoffCleanup() {
+    handoffCleanupRunnable?.let { mainHandler.removeCallbacks(it) }
+    handoffCleanupRunnable = null
   }
 
   private fun markEmbeddedOpen() {

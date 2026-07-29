@@ -8,11 +8,23 @@ public final class PlaidFlutterPlugin: NSObject {
 }
 
 public class PlaidLinkFlutterPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
+  private enum SessionKind {
+    case link
+    case layer
+    case headless
+  }
+
+  private static let handoffCleanupDelay: TimeInterval = 3
+
   private var eventSink: FlutterEventSink?
   private var linkSession: PlaidLinkSession?
   private var layerSession: PlaidLayerSession?
   private var headlessSession: (any PlaidHeadlessSession)?
   private var sessionCreationError: Error?
+  private var activeSessionId: Int?
+  private var activeSessionKind: SessionKind?
+  private var waitingForHandoffSessionId: Int?
+  private var handoffCleanupWorkItem: DispatchWorkItem?
 
   public static func register(with registrar: FlutterPluginRegistrar) {
     let methodChannel = FlutterMethodChannel(
@@ -84,16 +96,17 @@ public class PlaidLinkFlutterPlugin: NSObject, FlutterPlugin, FlutterStreamHandl
 
     let onSuccess: OnSuccessHandler = { [weak self] success in
       self?.sendEvent(type: "success", payload: success.asDictionary, sessionId: sessionId)
-      self?.linkSession = nil
+      self?.markSessionSucceeded(sessionId: sessionId)
     }
 
     let onExit: OnExitHandler = { [weak self] exit in
       self?.sendEvent(type: "exit", payload: exit.asDictionary, sessionId: sessionId)
-      self?.linkSession = nil
+      self?.clearActiveSession(sessionId: sessionId)
     }
 
     let onEvent: OnEventHandler = { [weak self] event in
       self?.sendEvent(type: "event", payload: event.asDictionary, sessionId: sessionId)
+      self?.clearSucceededSessionOnHandoff(event: event, sessionId: sessionId)
     }
 
     let onLoad: OnLoadHandler = { [weak self] in
@@ -109,7 +122,9 @@ public class PlaidLinkFlutterPlugin: NSObject, FlutterPlugin, FlutterStreamHandl
     )
 
     do {
+      clearActiveSession()
       linkSession = try Plaid.createPlaidLinkSession(configuration: configuration)
+      markActiveSession(kind: .link, sessionId: sessionId)
       sessionCreationError = nil
       result(nil)
     } catch {
@@ -138,16 +153,17 @@ public class PlaidLinkFlutterPlugin: NSObject, FlutterPlugin, FlutterStreamHandl
 
     let onSuccess: OnSuccessHandler = { [weak self] success in
       self?.sendEvent(type: "success", payload: success.asDictionary, sessionId: sessionId)
-      self?.layerSession = nil
+      self?.markSessionSucceeded(sessionId: sessionId)
     }
 
     let onExit: OnExitHandler = { [weak self] exit in
       self?.sendEvent(type: "exit", payload: exit.asDictionary, sessionId: sessionId)
-      self?.layerSession = nil
+      self?.clearActiveSession(sessionId: sessionId)
     }
 
     let onEvent: OnEventHandler = { [weak self] event in
       self?.sendEvent(type: "event", payload: event.asDictionary, sessionId: sessionId)
+      self?.clearSucceededSessionOnHandoff(event: event, sessionId: sessionId)
     }
 
     let configuration = LayerTokenConfiguration(
@@ -158,7 +174,9 @@ public class PlaidLinkFlutterPlugin: NSObject, FlutterPlugin, FlutterStreamHandl
     )
 
     do {
+      clearActiveSession()
       layerSession = try Plaid.createPlaidLayerSession(configuration: configuration)
+      markActiveSession(kind: .layer, sessionId: sessionId)
       sessionCreationError = nil
       result(nil)
     } catch {
@@ -187,16 +205,17 @@ public class PlaidLinkFlutterPlugin: NSObject, FlutterPlugin, FlutterStreamHandl
 
     let onSuccess: OnSuccessHandler = { [weak self] success in
       self?.sendEvent(type: "success", payload: success.asDictionary, sessionId: sessionId)
-      self?.headlessSession = nil
+      self?.markSessionSucceeded(sessionId: sessionId)
     }
 
     let onExit: OnExitHandler = { [weak self] exit in
       self?.sendEvent(type: "exit", payload: exit.asDictionary, sessionId: sessionId)
-      self?.headlessSession = nil
+      self?.clearActiveSession(sessionId: sessionId)
     }
 
     let onEvent: OnEventHandler = { [weak self] event in
       self?.sendEvent(type: "event", payload: event.asDictionary, sessionId: sessionId)
+      self?.clearSucceededSessionOnHandoff(event: event, sessionId: sessionId)
     }
 
     let onLoad: OnLoadHandler = { [weak self] in
@@ -212,7 +231,9 @@ public class PlaidLinkFlutterPlugin: NSObject, FlutterPlugin, FlutterStreamHandl
     )
 
     do {
+      clearActiveSession()
       headlessSession = try Plaid.createHeadlessSession(configuration: configuration)
+      markActiveSession(kind: .headless, sessionId: sessionId)
       sessionCreationError = nil
       result(nil)
     } catch {
@@ -368,6 +389,68 @@ public class PlaidLinkFlutterPlugin: NSObject, FlutterPlugin, FlutterStreamHandl
       message: sessionCreationError?.localizedDescription ?? defaultMessage,
       details: nil
     )
+  }
+
+  private func markActiveSession(kind: SessionKind, sessionId: Int) {
+    activeSessionKind = kind
+    activeSessionId = sessionId
+    waitingForHandoffSessionId = nil
+    cancelHandoffCleanup()
+  }
+
+  private func markSessionSucceeded(sessionId: Int) {
+    guard activeSessionId == sessionId else {
+      return
+    }
+
+    waitingForHandoffSessionId = sessionId
+    cancelHandoffCleanup()
+
+    let workItem = DispatchWorkItem { [weak self] in
+      self?.clearActiveSession(sessionId: sessionId)
+    }
+    handoffCleanupWorkItem = workItem
+    DispatchQueue.main.asyncAfter(
+      deadline: .now() + Self.handoffCleanupDelay,
+      execute: workItem
+    )
+  }
+
+  private func clearSucceededSessionOnHandoff(event: LinkEvent, sessionId: Int) {
+    guard event.eventName == .handoff, waitingForHandoffSessionId == sessionId else {
+      return
+    }
+    clearActiveSession(sessionId: sessionId)
+  }
+
+  private func clearActiveSession(sessionId: Int? = nil) {
+    if let sessionId, activeSessionId != sessionId {
+      return
+    }
+
+    cancelHandoffCleanup()
+
+    switch activeSessionKind {
+    case .link:
+      linkSession = nil
+    case .layer:
+      layerSession = nil
+    case .headless:
+      headlessSession = nil
+    case nil:
+      linkSession = nil
+      layerSession = nil
+      headlessSession = nil
+    }
+
+    activeSessionKind = nil
+    activeSessionId = nil
+    waitingForHandoffSessionId = nil
+  }
+
+  private func cancelHandoffCleanup() {
+    handoffCleanupWorkItem?.cancel()
+    handoffCleanupWorkItem = nil
   }
 
   private func sendEvent(type: String, payload: [String: Any], sessionId: Int? = nil) {
