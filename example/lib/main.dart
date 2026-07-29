@@ -2,6 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:plaid_link_flutter/plaid_link_flutter.dart';
 
+/// Logs every SDK callback to the console as it fires so event delivery and
+/// ordering (including the terminal `HANDOFF`, which arrives after onSuccess)
+/// are visible in `flutter run`.
+void _logCallback(String flow, String message) {
+  debugPrint('[plaid][$flow] $message');
+}
+
 void main() {
   runApp(const LinkKitExampleApp());
 }
@@ -168,6 +175,12 @@ class _PlaidLinkSessionScreenState extends State<PlaidLinkSessionScreen> {
         LinkTokenConfiguration(
           token: token,
           onSuccess: (success) {
+            _logCallback(
+              'Link',
+              'onSuccess publicToken=${success.publicToken} '
+                  'institution=${success.metadata.institution?.name} '
+                  'accounts=${success.metadata.accounts.length}',
+            );
             _showResultSheet(
               title: 'Success',
               rows: [
@@ -185,6 +198,12 @@ class _PlaidLinkSessionScreenState extends State<PlaidLinkSessionScreen> {
             );
           },
           onExit: (exit) {
+            _logCallback(
+              'Link',
+              'onExit status=${exit.metadata.status?.value} '
+                  'errorCode=${exit.error?.errorCode} '
+                  'errorMessage=${exit.error?.errorMessage}',
+            );
             _showResultSheet(
               title: 'Exit',
               rows: [
@@ -196,6 +215,11 @@ class _PlaidLinkSessionScreenState extends State<PlaidLinkSessionScreen> {
             );
           },
           onEvent: (event) {
+            _logCallback(
+              'Link',
+              'onEvent ${event.eventName.value} '
+                  'view=${event.metadata.viewName.value}',
+            );
             _events.add(event);
             if (event.eventName == LinkEventName.error) {
               setState(() {
@@ -205,6 +229,7 @@ class _PlaidLinkSessionScreenState extends State<PlaidLinkSessionScreen> {
               });
             }
           },
+          onLoad: () => _logCallback('Link', 'onLoad'),
         ),
       );
       setState(() {
@@ -246,10 +271,7 @@ class _PlaidLinkSessionScreenState extends State<PlaidLinkSessionScreen> {
           title: title,
           rows: rows,
           events: List<LinkEvent>.of(_events),
-          onClose: () {
-            Navigator.of(context).pop();
-            _createSession();
-          },
+          onClose: () => Navigator.of(context).pop(),
         );
       },
     );
@@ -369,6 +391,10 @@ class _PlaidLayerSessionScreenState extends State<PlaidLayerSessionScreen> {
         LayerTokenConfiguration(
           token: token,
           onSuccess: (success) {
+            _logCallback(
+              'Layer',
+              'onSuccess publicToken=${success.publicToken}',
+            );
             _showResultSheet(
               title: 'Layer Success',
               rows: [
@@ -378,6 +404,12 @@ class _PlaidLayerSessionScreenState extends State<PlaidLayerSessionScreen> {
             );
           },
           onExit: (exit) {
+            _logCallback(
+              'Layer',
+              'onExit status=${exit.metadata.status?.value} '
+                  'errorCode=${exit.error?.errorCode} '
+                  'errorMessage=${exit.error?.errorMessage}',
+            );
             _showResultSheet(
               title: 'Layer Exit',
               rows: [
@@ -387,7 +419,14 @@ class _PlaidLayerSessionScreenState extends State<PlaidLayerSessionScreen> {
               ],
             );
           },
-          onEvent: (event) => setState(() => _events.add(event)),
+          onEvent: (event) {
+            _logCallback(
+              'Layer',
+              'onEvent ${event.eventName.value} '
+                  'view=${event.metadata.viewName.value}',
+            );
+            setState(() => _events.add(event));
+          },
         ),
       );
       setState(() {
@@ -446,10 +485,7 @@ class _PlaidLayerSessionScreenState extends State<PlaidLayerSessionScreen> {
           title: title,
           rows: rows,
           events: List<LinkEvent>.of(_events),
-          onClose: () {
-            Navigator.of(context).pop();
-            _createSession();
-          },
+          onClose: () => Navigator.of(context).pop(),
         );
       },
     );
@@ -551,6 +587,10 @@ class _PlaidHeadlessSessionScreenState
         LinkTokenConfiguration(
           token: token,
           onSuccess: (success) {
+            _logCallback(
+              'Headless',
+              'onSuccess publicToken=${success.publicToken}',
+            );
             _showResultSheet(
               title: 'Headless Success',
               rows: [
@@ -560,6 +600,12 @@ class _PlaidHeadlessSessionScreenState
             );
           },
           onExit: (exit) {
+            _logCallback(
+              'Headless',
+              'onExit status=${exit.metadata.status?.value} '
+                  'errorCode=${exit.error?.errorCode} '
+                  'errorMessage=${exit.error?.errorMessage}',
+            );
             _showResultSheet(
               title: 'Headless Exit',
               rows: [
@@ -569,7 +615,15 @@ class _PlaidHeadlessSessionScreenState
               ],
             );
           },
-          onEvent: (event) => setState(() => _events.add(event)),
+          onEvent: (event) {
+            _logCallback(
+              'Headless',
+              'onEvent ${event.eventName.value} '
+                  'view=${event.metadata.viewName.value}',
+            );
+            setState(() => _events.add(event));
+          },
+          onLoad: () => _logCallback('Headless', 'onLoad'),
         ),
       );
       setState(() {
@@ -611,10 +665,7 @@ class _PlaidHeadlessSessionScreenState
           title: title,
           rows: rows,
           events: List<LinkEvent>.of(_events),
-          onClose: () {
-            Navigator.of(context).pop();
-            _createSession();
-          },
+          onClose: () => Navigator.of(context).pop(),
         );
       },
     );
@@ -738,6 +789,10 @@ class _PlaidEmbeddedSearchScreenState extends State<PlaidEmbeddedSearchScreen> {
             child: PlaidEmbeddedSearchView(
               token: _activeToken!,
               onSuccess: (success) {
+                _logCallback(
+                  'Embedded',
+                  'onSuccess publicToken=${success.publicToken}',
+                );
                 _showResultSheet(
                   title: 'Embedded Success',
                   rows: [
@@ -750,6 +805,12 @@ class _PlaidEmbeddedSearchScreenState extends State<PlaidEmbeddedSearchScreen> {
                 );
               },
               onExit: (exit) {
+                _logCallback(
+                  'Embedded',
+                  'onExit status=${exit.metadata.status?.value} '
+                      'errorCode=${exit.error?.errorCode} '
+                      'errorMessage=${exit.error?.errorMessage}',
+                );
                 _showResultSheet(
                   title: 'Embedded Exit',
                   rows: [
@@ -759,7 +820,15 @@ class _PlaidEmbeddedSearchScreenState extends State<PlaidEmbeddedSearchScreen> {
                   ],
                 );
               },
-              onEvent: (event) => setState(() => _events.add(event)),
+              onEvent: (event) {
+                _logCallback(
+                  'Embedded',
+                  'onEvent ${event.eventName.value} '
+                      'view=${event.metadata.viewName.value}',
+                );
+                setState(() => _events.add(event));
+              },
+              onLoad: () => _logCallback('Embedded', 'onLoad'),
             ),
           ),
       ],

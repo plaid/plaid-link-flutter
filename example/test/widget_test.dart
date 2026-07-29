@@ -1,4 +1,5 @@
 import 'package:flutter/services.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:plaid_link_flutter_example/main.dart';
@@ -78,5 +79,29 @@ void main() {
     expect(find.text('Live'), findsOneWidget);
     expect(find.text('Simulated'), findsOneWidget);
     expect(find.text('SYNC FINANCEKIT'), findsOneWidget);
+  });
+
+  testWidgets('ResultSheet close delegates without implicit session work', (
+    tester,
+  ) async {
+    var closeCount = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ResultSheet(
+            title: 'Success',
+            rows: const [ResultRow('Public token', 'public-sandbox-token')],
+            events: const [],
+            onClose: () => closeCount++,
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Close'));
+    await tester.pump();
+
+    expect(closeCount, 1);
   });
 }
