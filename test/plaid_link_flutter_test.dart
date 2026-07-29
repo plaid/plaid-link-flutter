@@ -331,6 +331,42 @@ void main() {
     await fakePlatform.dispose();
   });
 
+  test(
+    'a HANDOFF before onSuccess does not cancel the pending success',
+    () async {
+      final fakePlatform = FakePlaidLinkFlutterPlatform();
+      PlaidLinkFlutterPlatform.instance = fakePlatform;
+      var successCount = 0;
+      final events = <LinkEventName>[];
+
+      final session = await createPlaidLinkSession(
+        LinkTokenConfiguration(
+          token: 'link-sandbox-token',
+          onSuccess: (_) => successCount++,
+          onExit: (_) {},
+          onEvent: (event) => events.add(event.eventName),
+        ),
+      );
+      final sessionId = fakePlatform.lastLinkSessionId!;
+
+      // Out-of-order: HANDOFF arrives before success. It must NOT tear the
+      // session down, or the success still on its way would be dropped.
+      fakePlatform.emitEvent(
+        sessionId,
+        sampleEvent(eventName: LinkEventName.handoff),
+      );
+      await Future<void>.delayed(Duration.zero);
+      fakePlatform.emitSuccess(sessionId, sampleSuccess());
+      await Future<void>.delayed(Duration.zero);
+
+      expect(events, [LinkEventName.handoff]);
+      expect(successCount, 1);
+
+      session.dispose();
+      await fakePlatform.dispose();
+    },
+  );
+
   test('layer tears down on HANDOFF without an onEvent callback', () async {
     final fakePlatform = FakePlaidLinkFlutterPlatform();
     PlaidLinkFlutterPlatform.instance = fakePlatform;

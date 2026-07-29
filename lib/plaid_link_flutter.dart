@@ -61,21 +61,34 @@ abstract class _PlaidSession {
   final List<StreamSubscription<Object?>> _subscriptions =
       <StreamSubscription<Object?>>[];
   Timer? _handoffTimer;
+  bool _succeeded = false;
   bool _disposed = false;
 
   void _bind(StreamSubscription<Object?> subscription) {
     _subscriptions.add(subscription);
   }
 
-  /// Keeps this session's listeners alive after `onSuccess` so the terminal
-  /// `HANDOFF` event (which the native SDK sends *after* success) is still
-  /// delivered; the `HANDOFF` handler then tears the session down. Starts a
-  /// fallback timer so a session whose `HANDOFF` never arrives still cleans up.
-  void _armHandoffTeardown() {
+  /// Records the terminal `onSuccess` and keeps this session's listeners alive
+  /// afterward so the `HANDOFF` event (which the native SDK sends *after*
+  /// success) is still delivered; [_maybeTearDownOnHandoff] then disposes when
+  /// it arrives. A fallback timer guarantees teardown even if `HANDOFF` never
+  /// comes, so the session can't leak.
+  void _markSucceeded() {
     if (_disposed) {
       return;
     }
+    _succeeded = true;
     _handoffTimer ??= Timer(_handoffTimeout, dispose);
+  }
+
+  /// Disposes the session when the terminal `HANDOFF` event arrives — but only
+  /// after `onSuccess` has been delivered. `HANDOFF` is a success-path event;
+  /// gating on [_succeeded] means an out-of-order or unexpected `HANDOFF` can
+  /// never cancel a success that is still on its way.
+  void _maybeTearDownOnHandoff(LinkEvent event) {
+    if (_succeeded && event.eventName == LinkEventName.handoff) {
+      dispose();
+    }
   }
 
   /// Cancels this session's callback subscriptions.
@@ -151,7 +164,7 @@ Future<PlaidLinkSession> createPlaidLinkSession(
       config.onSuccess(success);
       // HANDOFF is delivered after onSuccess; keep listening for it (or the
       // fallback timeout) instead of tearing the session down immediately.
-      session._armHandoffTeardown();
+      session._markSucceeded();
     }),
   );
   session._bind(
@@ -163,9 +176,7 @@ Future<PlaidLinkSession> createPlaidLinkSession(
   session._bind(
     platform.onEventForSession(sessionId).listen((event) {
       config.onEvent(event);
-      if (event.eventName == LinkEventName.handoff) {
-        session.dispose();
-      }
+      session._maybeTearDownOnHandoff(event);
     }),
   );
   final onLoad = config.onLoad;
@@ -194,7 +205,7 @@ Future<PlaidLayerSession> createPlaidLayerSession(
       config.onSuccess(success);
       // HANDOFF is delivered after onSuccess; keep listening for it (or the
       // fallback timeout) instead of tearing the session down immediately.
-      session._armHandoffTeardown();
+      session._markSucceeded();
     }),
   );
   final onExit = config.onExit;
@@ -210,9 +221,7 @@ Future<PlaidLayerSession> createPlaidLayerSession(
   session._bind(
     platform.onEventForSession(sessionId).listen((event) {
       onEvent?.call(event);
-      if (event.eventName == LinkEventName.handoff) {
-        session.dispose();
-      }
+      session._maybeTearDownOnHandoff(event);
     }),
   );
 
@@ -237,7 +246,7 @@ Future<PlaidHeadlessSession> createPlaidHeadlessSession(
       config.onSuccess(success);
       // HANDOFF is delivered after onSuccess; keep listening for it (or the
       // fallback timeout) instead of tearing the session down immediately.
-      session._armHandoffTeardown();
+      session._markSucceeded();
     }),
   );
   session._bind(
@@ -249,9 +258,7 @@ Future<PlaidHeadlessSession> createPlaidHeadlessSession(
   session._bind(
     platform.onEventForSession(sessionId).listen((event) {
       config.onEvent(event);
-      if (event.eventName == LinkEventName.handoff) {
-        session.dispose();
-      }
+      session._maybeTearDownOnHandoff(event);
     }),
   );
   final onLoad = config.onLoad;
