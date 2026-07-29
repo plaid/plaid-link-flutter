@@ -19,10 +19,20 @@ dart doc
 | `PlaidLayerSession.submit(SubmissionData data)` | `Future<void>` | Submits user-collected data to Layer. |
 | `createPlaidHeadlessSession(LinkTokenConfiguration config)` | `Future<PlaidHeadlessSession>` | Creates a Headless session. |
 | `PlaidHeadlessSession.start()` | `Future<void>` | Starts the Headless session. |
-| `PlaidLinkSession.dispose()` (also on Layer/Headless) | `void` | Cancels the session's callbacks. Runs automatically after a terminal success/exit; call it to abandon a session created but never opened. |
+| `PlaidLinkSession.dispose()` (also on Layer/Headless) | `void` | Cancels the session's callbacks. Runs automatically after a terminal exit, or after the terminal `HANDOFF` event that follows success (with a short fallback if `HANDOFF` never arrives); call it to abandon a session created but never opened. |
 | `syncFinanceKit(FinanceKitConfiguration config)` | `Future<void>` | Runs iOS FinanceKit sync. Android throws `FinanceKitException`. |
 | `PlaidLink.sdkVersion` | `Future<String?>` | Returns the native Plaid SDK version, not the Flutter package version. |
 | `PlaidLink.onEvent` | `Stream<LinkEvent>` | Process-wide event stream for advanced observers. Prefer per-session callbacks. |
+
+## Event delivery and session lifecycle
+
+`onEvent` receives every Link event, including the terminal **`HANDOFF`** event.
+Plaid sends `HANDOFF` *after* `onSuccess` — it signals that Link has handed control
+back to your app, and Plaid uses it for conversion analytics — so the session keeps
+its listeners alive briefly after success to deliver it. The session then disposes
+itself automatically when `HANDOFF` arrives, or after a short fallback window if it
+never does (so nothing leaks). `onExit` remains an immediate teardown; no `HANDOFF`
+follows an exit.
 
 ## Configuration Types
 

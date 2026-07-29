@@ -17,6 +17,7 @@ Initial public beta release of the official Plaid Link Flutter SDK.
 - Embedded Search support through `PlaidEmbeddedSearchView`.
 - iOS FinanceKit sync support through `syncFinanceKit`.
 - RN-compatible success, exit, event, error, institution, account, Layer submission, and FinanceKit model types.
+- `onEvent` delivers the complete Link event stream, including the terminal `HANDOFF` event that Plaid emits after `onSuccess`; each session cleans up automatically after `HANDOFF` (or a short fallback if it never arrives).
 - Example app covering regular Link, Layer, Headless, Embedded Search, and FinanceKit flows.
 - Migration guide from the community `plaid_flutter` package.
 - Developer documentation with setup notes, recipes, lifecycle behavior, error handling, and API reference.

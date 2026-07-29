@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:plaid_link_flutter/plaid_link_flutter.dart';
@@ -293,32 +294,105 @@ void main() {
     await fakePlatform.dispose();
   });
 
-  test('success cleans up session listeners for terminal events', () async {
+  test('delivers the terminal HANDOFF event after onSuccess', () async {
     final fakePlatform = FakePlaidLinkFlutterPlatform();
     PlaidLinkFlutterPlatform.instance = fakePlatform;
     var successCount = 0;
-    var eventCount = 0;
+    final events = <LinkEventName>[];
 
     await createPlaidLinkSession(
       LinkTokenConfiguration(
         token: 'link-sandbox-token',
         onSuccess: (_) => successCount++,
         onExit: (_) {},
-        onEvent: (_) => eventCount++,
+        onEvent: (event) => events.add(event.eventName),
       ),
     );
     final sessionId = fakePlatform.lastLinkSessionId!;
 
+    // onSuccess is not the end of the stream: HANDOFF is sent afterward and
+    // must still be delivered instead of being dropped by an early teardown.
     fakePlatform.emitSuccess(sessionId, sampleSuccess());
     await Future<void>.delayed(Duration.zero);
-    fakePlatform.emitSuccess(sessionId, sampleSuccess());
-    fakePlatform.emitEvent(sessionId, sampleEvent());
+    fakePlatform.emitEvent(
+      sessionId,
+      sampleEvent(eventName: LinkEventName.handoff),
+    );
     await Future<void>.delayed(Duration.zero);
 
     expect(successCount, 1);
-    expect(eventCount, 0);
+    expect(events, [LinkEventName.handoff]);
+
+    // HANDOFF is terminal: it tears the session down, so later events stop.
+    fakePlatform.emitEvent(sessionId, sampleEvent());
+    await Future<void>.delayed(Duration.zero);
+    expect(events, [LinkEventName.handoff]);
 
     await fakePlatform.dispose();
+  });
+
+  test('layer tears down on HANDOFF without an onEvent callback', () async {
+    final fakePlatform = FakePlaidLinkFlutterPlatform();
+    PlaidLinkFlutterPlatform.instance = fakePlatform;
+    var successCount = 0;
+
+    await createPlaidLayerSession(
+      LayerTokenConfiguration(
+        token: 'link-sandbox-layer-token',
+        onSuccess: (_) => successCount++,
+      ),
+    );
+    final sessionId = fakePlatform.lastLayerSessionId!;
+
+    fakePlatform.emitSuccess(sessionId, sampleSuccess());
+    await Future<void>.delayed(Duration.zero);
+    // No onEvent was provided, but HANDOFF must still trigger teardown.
+    fakePlatform.emitEvent(
+      sessionId,
+      sampleEvent(eventName: LinkEventName.handoff),
+    );
+    await Future<void>.delayed(Duration.zero);
+
+    // After teardown, a re-emitted success is no longer forwarded.
+    fakePlatform.emitSuccess(sessionId, sampleSuccess());
+    await Future<void>.delayed(Duration.zero);
+    expect(successCount, 1);
+
+    await fakePlatform.dispose();
+  });
+
+  test('tears down after the fallback timeout when HANDOFF never arrives', () {
+    fakeAsync((async) {
+      final fakePlatform = FakePlaidLinkFlutterPlatform();
+      PlaidLinkFlutterPlatform.instance = fakePlatform;
+      final events = <LinkEventName>[];
+
+      createPlaidLinkSession(
+        LinkTokenConfiguration(
+          token: 'link-sandbox-token',
+          onSuccess: (_) {},
+          onExit: (_) {},
+          onEvent: (event) => events.add(event.eventName),
+        ),
+      );
+      async.flushMicrotasks();
+      final sessionId = fakePlatform.lastLinkSessionId!;
+
+      fakePlatform.emitSuccess(sessionId, sampleSuccess());
+      async.flushMicrotasks();
+
+      // Events during the wait window are still delivered.
+      fakePlatform.emitEvent(sessionId, sampleEvent());
+      async.flushMicrotasks();
+      expect(events, [LinkEventName.open]);
+
+      // With no HANDOFF, the fallback timeout tears the session down, so later
+      // events are dropped and the session can't leak its listeners forever.
+      async.elapse(const Duration(seconds: 5));
+      fakePlatform.emitEvent(sessionId, sampleEvent());
+      async.flushMicrotasks();
+      expect(events, [LinkEventName.open]);
+    });
   });
 
   test(
@@ -649,10 +723,10 @@ LinkSuccess sampleSuccess() {
   );
 }
 
-LinkEvent sampleEvent() {
-  return const LinkEvent(
-    eventName: LinkEventName.open,
-    metadata: LinkEventMetadata(
+LinkEvent sampleEvent({LinkEventName eventName = LinkEventName.open}) {
+  return LinkEvent(
+    eventName: eventName,
+    metadata: const LinkEventMetadata(
       linkSessionId: 'session-id',
       viewName: LinkViewName.connected,
     ),
