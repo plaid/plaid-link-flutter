@@ -144,9 +144,13 @@ class _PlaidLinkSessionScreenState extends State<PlaidLinkSessionScreen> {
   PlaidLinkSession? _session;
   SessionState _state = SessionState.idle;
   String? _errorMessage;
+  int _sessionAttempt = 0;
+  bool _didLoad = false;
 
   @override
   void dispose() {
+    _sessionAttempt++;
+    _session?.dispose();
     _tokenController.dispose();
     super.dispose();
   }
@@ -164,6 +168,11 @@ class _PlaidLinkSessionScreenState extends State<PlaidLinkSessionScreen> {
       return;
     }
 
+    final attempt = ++_sessionAttempt;
+    _session?.dispose();
+    _session = null;
+    _didLoad = false;
+
     setState(() {
       _state = SessionState.loading;
       _errorMessage = null;
@@ -175,6 +184,9 @@ class _PlaidLinkSessionScreenState extends State<PlaidLinkSessionScreen> {
         LinkTokenConfiguration(
           token: token,
           onSuccess: (success) {
+            if (!mounted || attempt != _sessionAttempt) {
+              return;
+            }
             _logCallback(
               'Link',
               'onSuccess publicToken=${success.publicToken} '
@@ -198,6 +210,9 @@ class _PlaidLinkSessionScreenState extends State<PlaidLinkSessionScreen> {
             );
           },
           onExit: (exit) {
+            if (!mounted || attempt != _sessionAttempt) {
+              return;
+            }
             _logCallback(
               'Link',
               'onExit status=${exit.metadata.status?.value} '
@@ -215,6 +230,9 @@ class _PlaidLinkSessionScreenState extends State<PlaidLinkSessionScreen> {
             );
           },
           onEvent: (event) {
+            if (!mounted || attempt != _sessionAttempt) {
+              return;
+            }
             _logCallback(
               'Link',
               'onEvent ${event.eventName.value} '
@@ -229,14 +247,26 @@ class _PlaidLinkSessionScreenState extends State<PlaidLinkSessionScreen> {
               });
             }
           },
-          onLoad: () => _logCallback('Link', 'onLoad'),
+          onLoad: () {
+            if (!mounted || attempt != _sessionAttempt) {
+              return;
+            }
+            _logCallback('Link', 'onLoad');
+            _didLoad = true;
+            _markSessionReady(attempt);
+          },
         ),
       );
-      setState(() {
-        _session = session;
-        _state = SessionState.ready;
-      });
+      if (!mounted || attempt != _sessionAttempt) {
+        session.dispose();
+        return;
+      }
+      _session = session;
+      _markSessionReady(attempt);
     } catch (error) {
+      if (!mounted || attempt != _sessionAttempt) {
+        return;
+      }
       setState(() {
         _state = SessionState.error;
         _errorMessage = error.toString();
@@ -244,10 +274,24 @@ class _PlaidLinkSessionScreenState extends State<PlaidLinkSessionScreen> {
     }
   }
 
+  void _markSessionReady(int attempt) {
+    if (!mounted ||
+        attempt != _sessionAttempt ||
+        _state != SessionState.loading ||
+        !_didLoad ||
+        _session == null) {
+      return;
+    }
+    setState(() => _state = SessionState.ready);
+  }
+
   Future<void> _openSession() async {
     try {
       await _session?.open(false);
     } catch (error) {
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _state = SessionState.error;
         _errorMessage = error.toString();
@@ -357,9 +401,13 @@ class _PlaidLayerSessionScreenState extends State<PlaidLayerSessionScreen> {
   PlaidLayerSession? _session;
   SessionState _state = SessionState.idle;
   String? _errorMessage;
+  int _sessionAttempt = 0;
+  bool _didReceiveLayerReady = false;
 
   @override
   void dispose() {
+    _sessionAttempt++;
+    _session?.dispose();
     _tokenController.dispose();
     _phoneController.dispose();
     _dobController.dispose();
@@ -380,6 +428,11 @@ class _PlaidLayerSessionScreenState extends State<PlaidLayerSessionScreen> {
       return;
     }
 
+    final attempt = ++_sessionAttempt;
+    _session?.dispose();
+    _session = null;
+    _didReceiveLayerReady = false;
+
     setState(() {
       _state = SessionState.loading;
       _errorMessage = null;
@@ -391,6 +444,9 @@ class _PlaidLayerSessionScreenState extends State<PlaidLayerSessionScreen> {
         LayerTokenConfiguration(
           token: token,
           onSuccess: (success) {
+            if (!mounted || attempt != _sessionAttempt) {
+              return;
+            }
             _logCallback(
               'Layer',
               'onSuccess publicToken=${success.publicToken}',
@@ -404,6 +460,9 @@ class _PlaidLayerSessionScreenState extends State<PlaidLayerSessionScreen> {
             );
           },
           onExit: (exit) {
+            if (!mounted || attempt != _sessionAttempt) {
+              return;
+            }
             _logCallback(
               'Layer',
               'onExit status=${exit.metadata.status?.value} '
@@ -420,20 +479,36 @@ class _PlaidLayerSessionScreenState extends State<PlaidLayerSessionScreen> {
             );
           },
           onEvent: (event) {
+            if (!mounted || attempt != _sessionAttempt) {
+              return;
+            }
             _logCallback(
               'Layer',
               'onEvent ${event.eventName.value} '
                   'view=${event.metadata.viewName.value}',
             );
-            setState(() => _events.add(event));
+            setState(() {
+              _events.add(event);
+              if (event.eventName == LinkEventName.layerReady) {
+                _didReceiveLayerReady = true;
+                _markLayerReady();
+              }
+            });
           },
         ),
       );
+      if (!mounted || attempt != _sessionAttempt) {
+        session.dispose();
+        return;
+      }
       setState(() {
         _session = session;
-        _state = SessionState.ready;
+        _markLayerReady();
       });
     } catch (error) {
+      if (!mounted || attempt != _sessionAttempt) {
+        return;
+      }
       setState(() {
         _state = SessionState.error;
         _errorMessage = error.toString();
@@ -441,10 +516,21 @@ class _PlaidLayerSessionScreenState extends State<PlaidLayerSessionScreen> {
     }
   }
 
+  void _markLayerReady() {
+    if (_state == SessionState.loading &&
+        _didReceiveLayerReady &&
+        _session != null) {
+      _state = SessionState.ready;
+    }
+  }
+
   Future<void> _openSession() async {
     try {
       await _session?.open();
     } catch (error) {
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _state = SessionState.error;
         _errorMessage = error.toString();
@@ -462,6 +548,9 @@ class _PlaidLayerSessionScreenState extends State<PlaidLayerSessionScreen> {
         ),
       );
     } catch (error) {
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _state = SessionState.error;
         _errorMessage = error.toString();
@@ -527,6 +616,8 @@ class _PlaidLayerSessionScreenState extends State<PlaidLayerSessionScreen> {
           hasValidToken: _hasValidToken,
           createLabel: 'Create Layer Session',
           openLabel: 'Open Layer Session',
+          loadingLabel: 'Open Layer Session',
+          showLoadingIndicator: false,
           onCreate: _createSession,
           onOpen: _openSession,
         ),
@@ -556,9 +647,13 @@ class _PlaidHeadlessSessionScreenState
   PlaidHeadlessSession? _session;
   SessionState _state = SessionState.idle;
   String? _errorMessage;
+  int _sessionAttempt = 0;
+  bool _didLoad = false;
 
   @override
   void dispose() {
+    _sessionAttempt++;
+    _session?.dispose();
     _tokenController.dispose();
     super.dispose();
   }
@@ -576,6 +671,11 @@ class _PlaidHeadlessSessionScreenState
       return;
     }
 
+    final attempt = ++_sessionAttempt;
+    _session?.dispose();
+    _session = null;
+    _didLoad = false;
+
     setState(() {
       _state = SessionState.loading;
       _errorMessage = null;
@@ -587,6 +687,9 @@ class _PlaidHeadlessSessionScreenState
         LinkTokenConfiguration(
           token: token,
           onSuccess: (success) {
+            if (!mounted || attempt != _sessionAttempt) {
+              return;
+            }
             _logCallback(
               'Headless',
               'onSuccess publicToken=${success.publicToken}',
@@ -600,6 +703,9 @@ class _PlaidHeadlessSessionScreenState
             );
           },
           onExit: (exit) {
+            if (!mounted || attempt != _sessionAttempt) {
+              return;
+            }
             _logCallback(
               'Headless',
               'onExit status=${exit.metadata.status?.value} '
@@ -616,6 +722,9 @@ class _PlaidHeadlessSessionScreenState
             );
           },
           onEvent: (event) {
+            if (!mounted || attempt != _sessionAttempt) {
+              return;
+            }
             _logCallback(
               'Headless',
               'onEvent ${event.eventName.value} '
@@ -623,14 +732,26 @@ class _PlaidHeadlessSessionScreenState
             );
             setState(() => _events.add(event));
           },
-          onLoad: () => _logCallback('Headless', 'onLoad'),
+          onLoad: () {
+            if (!mounted || attempt != _sessionAttempt) {
+              return;
+            }
+            _logCallback('Headless', 'onLoad');
+            _didLoad = true;
+            _markSessionReady(attempt);
+          },
         ),
       );
-      setState(() {
-        _session = session;
-        _state = SessionState.ready;
-      });
+      if (!mounted || attempt != _sessionAttempt) {
+        session.dispose();
+        return;
+      }
+      _session = session;
+      _markSessionReady(attempt);
     } catch (error) {
+      if (!mounted || attempt != _sessionAttempt) {
+        return;
+      }
       setState(() {
         _state = SessionState.error;
         _errorMessage = error.toString();
@@ -638,10 +759,24 @@ class _PlaidHeadlessSessionScreenState
     }
   }
 
+  void _markSessionReady(int attempt) {
+    if (!mounted ||
+        attempt != _sessionAttempt ||
+        _state != SessionState.loading ||
+        !_didLoad ||
+        _session == null) {
+      return;
+    }
+    setState(() => _state = SessionState.ready);
+  }
+
   Future<void> _startSession() async {
     try {
       await _session?.start();
     } catch (error) {
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _state = SessionState.error;
         _errorMessage = error.toString();
@@ -1229,6 +1364,8 @@ class ConnectButton extends StatelessWidget {
     required this.onOpen,
     this.createLabel = 'Create Link Session',
     this.openLabel = 'Connect Bank Account',
+    this.loadingLabel = 'Initializing...',
+    this.showLoadingIndicator = true,
     super.key,
   });
 
@@ -1238,6 +1375,8 @@ class ConnectButton extends StatelessWidget {
   final VoidCallback onOpen;
   final String createLabel;
   final String openLabel;
+  final String loadingLabel;
+  final bool showLoadingIndicator;
 
   @override
   Widget build(BuildContext context) {
@@ -1247,7 +1386,7 @@ class ConnectButton extends StatelessWidget {
     final isEnabled = (isIdle && hasValidToken) || isReady;
     final title =
         isLoading
-            ? 'Initializing...'
+            ? loadingLabel
             : isIdle
             ? createLabel
             : openLabel;
@@ -1269,7 +1408,7 @@ class ConnectButton extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (isLoading) ...[
+            if (isLoading && showLoadingIndicator) ...[
               const SizedBox(
                 width: 16,
                 height: 16,
