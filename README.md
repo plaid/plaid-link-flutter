@@ -8,7 +8,7 @@ Add the package:
 
 ```yaml
 dependencies:
-  plaid_link_flutter: ^1.0.0-beta.1
+  plaid_link_flutter: ^1.0.0-beta.2
 ```
 
 Then import it:

@@ -1,3 +1,16 @@
+## 1.0.0-beta.2
+
+### Fixed
+
+- Deliver the terminal `HANDOFF` event through `onEvent` after `onSuccess` for regular Link, Layer, and Headless sessions.
+- Keep session listeners and native session state alive until `HANDOFF`, with a short fallback timeout when the event does not arrive.
+- Prevent early or stale `HANDOFF` events from tearing down the active session or suppressing a pending success callback.
+
+### Native SDKs
+
+- iOS: LinkKit `7.0.5`.
+- Android: Plaid Link SDK `6.1.0`.
+
 ## 1.0.0-beta.1
 
 Initial public beta release of the official Plaid Link Flutter SDK.
@@ -17,7 +30,6 @@ Initial public beta release of the official Plaid Link Flutter SDK.
 - Embedded Search support through `PlaidEmbeddedSearchView`.
 - iOS FinanceKit sync support through `syncFinanceKit`.
 - RN-compatible success, exit, event, error, institution, account, Layer submission, and FinanceKit model types.
-- `onEvent` delivers the complete Link event stream, including the terminal `HANDOFF` event that Plaid emits after `onSuccess`; each session cleans up automatically after `HANDOFF` (or a short fallback if it never arrives).
 - Example app covering regular Link, Layer, Headless, Embedded Search, and FinanceKit flows.
 - Migration guide from the community `plaid_flutter` package.
 - Developer documentation with setup notes, recipes, lifecycle behavior, error handling, and API reference.

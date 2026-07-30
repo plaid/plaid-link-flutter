@@ -3,6 +3,6 @@
   <application>
     <meta-data
       android:name="com.plaid.link.flutter"
-      android:value="1.0.0-beta.1" />
+      android:value="1.0.0-beta.2" />
   </application>
 </manifest>
