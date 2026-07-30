@@ -47,7 +47,7 @@ Replace the dependency:
 
 ```yaml
 dependencies:
-  plaid_link_flutter: ^1.0.0-beta.1
+  plaid_link_flutter: ^1.0.0-beta.2
 ```
 
 Then update imports:
@@ -327,4 +327,3 @@ native UI and handle `onExit`.
 - Gate FinanceKit behind iOS checks in your app code.
 - Confirm your backend creates the correct link token type for each flow.
 - Re-test OAuth redirects using your app's production redirect URI setup.
-
