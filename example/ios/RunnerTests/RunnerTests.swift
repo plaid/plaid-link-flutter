@@ -9,7 +9,7 @@ class RunnerTests: XCTestCase {
   // Guards the Flutter bridge version reported to LinkKit for wrapper analytics.
   // Kept in sync with pubspec/podspec/manifest by tool/check_versions.sh.
   func testBridgeVersionMatchesRelease() {
-    XCTAssertEqual(PlaidFlutterPlugin.sdkVersion, "1.0.0-beta.1")
+    XCTAssertEqual(PlaidFlutterPlugin.sdkVersion, "1.0.0-beta.2")
   }
 
   func testGetSdkVersionReturnsNativeVersion() {
