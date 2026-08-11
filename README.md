@@ -8,7 +8,7 @@ Add the package:
 
 ```yaml
 dependencies:
-  plaid_link_flutter: ^1.0.0-beta.2
+  plaid_link_flutter: ^1.0.0
 ```
 
 Then import it:
@@ -41,7 +41,7 @@ cd ios
 pod install
 ```
 
-The plugin vendors LinkKit `7.0.5` at
+The plugin vendors LinkKit `7.1.0` at
 `ios/Frameworks/LinkKit.xcframework`. The framework contains iOS device and
 simulator slices only; Mac Catalyst is not shipped.
 
@@ -64,7 +64,7 @@ android {
 }
 ```
 
-The plugin depends on `com.plaid.link:sdk-core:6.1.0`. Most apps do not need
+The plugin depends on `com.plaid.link:sdk-core:6.2.0`. Most apps do not need
 additional ProGuard/R8 rules. If your release build has custom aggressive
 shrinking and strips the Flutter plugin, keep the plugin package:
 
@@ -131,8 +131,8 @@ await syncFinanceKit(FinanceKitConfiguration(token: linkToken));
 
 ## Native SDKs
 
-- iOS: LinkKit `7.0.5`, vendored at `ios/Frameworks/LinkKit.xcframework`
-- Android: `com.plaid.link:sdk-core:6.1.0`
+- iOS: LinkKit `7.1.0`, vendored at `ios/Frameworks/LinkKit.xcframework`
+- Android: `com.plaid.link:sdk-core:6.2.0`
 
 The vendored iOS framework intentionally contains only iOS device and simulator slices. The Mac Catalyst slice is not included.
 
