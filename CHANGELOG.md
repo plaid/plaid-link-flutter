@@ -2,14 +2,24 @@
 
 First stable release of the official Plaid Link Flutter SDK.
 
-### Fixed
+### iOS
 
-- Prevent LinkKit from dismissing multi-item Link when a `HANDOFF` event arrives before `onSuccess`.
+Ships [LinkKit 7.1.0](https://github.com/plaid/plaid-link-ios/releases/tag/7.1.0):
 
-### Native SDKs
+- Fixed Link dismissing early during multi-item Link.
+- Improved logging for Headless sessions.
+- Return an error when a Headless token is reused.
+- Improved the error message when a non-Link token is used to create a `PlaidLinkSession`.
+- Fixed a FinanceKit crash.
 
-- iOS: LinkKit `7.1.0`.
-- Android: Plaid Link SDK `6.2.0`.
+### Android
+
+Ships [Plaid Link Android SDK 6.2.0](https://github.com/plaid/plaid-link-android/releases/tag/v6.2.0):
+
+- Fixed bugs affecting the `income_verification` product.
+- Lowered the minimum supported Android version from API 26 (Android 8.0) to API 25 (Android 7.1).
+- Narrowed the SDK's consumer ProGuard rules from `-keep` to `-keepnames`, allowing R8 to shrink and optimize SDK code while preserving readable stack traces.
+- Removed the unused OkHttp `logging-interceptor` dependency.
 
 ## 1.0.0-beta.2
 
