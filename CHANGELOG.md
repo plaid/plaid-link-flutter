@@ -1,3 +1,16 @@
+## 1.0.0
+
+First stable release of the official Plaid Link Flutter SDK.
+
+### Fixed
+
+- Prevent LinkKit from dismissing multi-item Link when a `HANDOFF` event arrives before `onSuccess`.
+
+### Native SDKs
+
+- iOS: LinkKit `7.1.0`.
+- Android: Plaid Link SDK `6.2.0`.
+
 ## 1.0.0-beta.2
 
 ### Fixed
