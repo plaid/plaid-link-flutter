@@ -622,7 +622,7 @@ class FinanceKitException implements Exception {
 ///
 /// The raw platform [code] string is always preserved on [PlaidLinkException];
 /// [unknown] is used for any code not modeled here so new native codes never
-/// crash a consumer that switches on [type].
+/// crash a consumer that switches on [PlaidLinkException.type].
 enum PlaidLinkErrorType {
   invalidToken('INVALID_TOKEN'),
   linkSessionCreateError('LINK_SESSION_CREATE_ERROR'),

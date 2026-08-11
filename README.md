@@ -1,6 +1,13 @@
 # Plaid Link Flutter
 
+[![CI](https://github.com/plaid/plaid-link-flutter/actions/workflows/ci.yml/badge.svg)](https://github.com/plaid/plaid-link-flutter/actions/workflows/ci.yml)
+[![pub package](https://img.shields.io/pub/v/plaid_link_flutter.svg)](https://pub.dev/packages/plaid_link_flutter)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 Official Flutter plugin for Plaid Link.
+
+See the [Plaid Link documentation](https://plaid.com/docs/link/) for product
+setup, Link token configuration, and integration guidance.
 
 ## Installation
 
