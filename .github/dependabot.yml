@@ -10,17 +10,7 @@ updates:
     schedule:
       interval: weekly
 
-  - package-ecosystem: pub
-    directory: /example
-    schedule:
-      interval: weekly
-
   - package-ecosystem: gradle
     directory: /android
-    schedule:
-      interval: weekly
-
-  - package-ecosystem: gradle
-    directory: /example/android
     schedule:
       interval: weekly
