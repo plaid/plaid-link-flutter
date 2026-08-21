@@ -7,7 +7,7 @@ Please do not report security vulnerabilities through public GitHub issues.
 Report suspected vulnerabilities through Plaid's responsible disclosure
 process:
 
-- Vulnerability disclosure: https://plaid.com/security/disclosure/
+- Vulnerability disclosure: https://hackerone.com/plaid
 
 Include as much detail as possible, including the affected Flutter SDK version,
 platform, native SDK version, reproduction steps, logs, and potential impact.
