@@ -1,7 +1,7 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 group = "com.plaid.plaid_link_flutter"
-version = "1.0.0"
+version = "1.1.0"
 
 buildscript {
     ext.kotlin_version = "2.4.20"
@@ -46,7 +46,7 @@ android {
     }
 
     dependencies {
-        implementation("com.plaid.link:sdk-core:6.2.1")
+        implementation("com.plaid.link:sdk-core:6.2.2")
         testImplementation("org.jetbrains.kotlin:kotlin-test")
         testImplementation("org.mockito:mockito-core:5.0.0")
     }
