@@ -27,7 +27,7 @@ class FakePlaidLinkFlutterPlatform extends PlaidLinkFlutterPlatform {
   bool startedHeadlessSession = false;
 
   @override
-  Future<String?> getSdkVersion() async => '7.1.0';
+  Future<String?> getSdkVersion() async => '7.2.0';
 
   @override
   Stream<LinkSuccess> onSuccessForSession(int sessionId) => _successController
@@ -118,7 +118,7 @@ void main() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (methodCall) async {
           if (methodCall.method == 'getSdkVersion') {
-            return '7.1.0';
+            return '7.2.0';
           }
           return null;
         });
@@ -139,7 +139,7 @@ void main() {
     expect(find.text('Plaid Headless Session'), findsOneWidget);
     expect(find.text('Plaid Embedded Search'), findsOneWidget);
     expect(find.text('Sync FinanceKit'), findsOneWidget);
-    expect(find.text('SDK: 7.1.0'), findsOneWidget);
+    expect(find.text('SDK: 7.2.0'), findsOneWidget);
   });
 
   testWidgets('Link session waits for onLoad before enabling open', (

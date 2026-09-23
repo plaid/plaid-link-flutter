@@ -1,3 +1,26 @@
+## 1.1.0
+
+Updates both native SDKs. No Dart API changes; upgrading requires no code changes.
+
+### iOS
+
+Ships [LinkKit 7.2.0](https://github.com/plaid/plaid-link-ios/releases/tag/7.2.0):
+
+- Added automatic session handoff for Embedded Link.
+- Deliver the Embedded Link start-failure `onExit` callback on the main thread.
+- Limited WebView inspection to Sandbox. Production Link sessions can no longer be attached to with Safari Web Inspector.
+- Security updates.
+
+### Android
+
+Ships [Plaid Link Android SDK 6.2.2](https://github.com/plaid/plaid-link-android/releases/tag/v6.2.2), which also picks up
+[6.2.1](https://github.com/plaid/plaid-link-android/releases/tag/v6.2.1) since 1.0.0 shipped 6.2.0:
+
+- Fixed a static-initialization crash in `LinkAccountVerificationStatus` and other public sealed classes when an activity is restored after the app's process was killed.
+- `OnLoadCallback` now triggers for sessions whose WebView is not eager-started.
+- Fixed a white screen when connecting a second OAuth institution in the same Link session. Returning from an OAuth redirect now resumes Link correctly for multiple institutions.
+- Security improvements.
+
 ## 1.0.0
 
 First stable release of the official Plaid Link Flutter SDK.

@@ -20,10 +20,10 @@ instead.
 | Dart version                   | e.g. 3.7.0                                |
 | iOS affected                   | yes / no                                  |
 | iOS version and device         | e.g. iOS 18, iPhone 16 simulator          |
-| LinkKit version                | e.g. 7.1.0, or N/A                        |
+| LinkKit version                | e.g. 7.2.0, or N/A                        |
 | Android affected               | yes / no                                  |
 | Android version and device     | e.g. Android 15, Pixel 8 emulator         |
-| Android Link SDK version       | e.g. 6.2.0, or N/A                        |
+| Android Link SDK version       | e.g. 6.2.2, or N/A                        |
 | Link Session ID                | e.g. 0de00328-44f8-4c2e-9eaf-726b2f70169c |
 
 ## Steps to reproduce

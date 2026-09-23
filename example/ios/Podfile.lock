@@ -2,7 +2,7 @@ PODS:
   - Flutter (1.0.0)
   - integration_test (0.0.1):
     - Flutter
-  - plaid_link_flutter (1.0.0):
+  - plaid_link_flutter (1.1.0):
     - Flutter
 
 DEPENDENCIES:
@@ -21,7 +21,7 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
   integration_test: 4a889634ef21a45d28d50d622cf412dc6d9f586e
-  plaid_link_flutter: 61c0271658ae2741d6a202fa0345d6d94f5733f3
+  plaid_link_flutter: 4ddf9778a53d01e0d96524ac1443eb1596fd08f6
 
 PODFILE CHECKSUM: 4305caec6b40dde0ae97be1573c53de1882a07e5
 
