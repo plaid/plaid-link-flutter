@@ -48,7 +48,7 @@ android {
     dependencies {
         implementation("com.plaid.link:sdk-core:6.2.2")
         testImplementation("org.jetbrains.kotlin:kotlin-test")
-        testImplementation("org.mockito:mockito-core:5.0.0")
+        testImplementation("org.mockito:mockito-core:5.24.0")
     }
 
     testOptions {
