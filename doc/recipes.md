@@ -47,7 +47,7 @@ await _session?.open(true);
 ## Layer Submit
 
 Use a Layer-compatible token. Create the session, optionally submit user data,
-then open Layer.
+then open Layer after `onEvent` receives `LinkEventName.layerReady`.
 
 ```dart
 PlaidLayerSession? _layerSession;
@@ -64,12 +64,15 @@ Future<void> createLayer(String layerToken) async {
       },
       onEvent: (event) {
         print(event.eventName.value);
+        if (event.eventName == LinkEventName.layerReady) {
+          _layerSession?.open();
+        }
       },
     ),
   );
 }
 
-Future<void> submitAndOpenLayer() async {
+Future<void> submitLayer() async {
   await _layerSession?.submit(
     const SubmissionData(
       phoneNumber: '+15551234567',
@@ -77,7 +80,6 @@ Future<void> submitAndOpenLayer() async {
       params: <String, String>{'source': 'flutter'},
     ),
   );
-  await _layerSession?.open();
 }
 ```
 

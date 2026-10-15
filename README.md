@@ -119,8 +119,9 @@ final layerSession = await createPlaidLayerSession(
   ),
 );
 
-await layerSession.open();
 await layerSession.submit(const SubmissionData(phoneNumber: '+15551234567'));
+// After onEvent receives LinkEventName.layerReady:
+await layerSession.open();
 
 final headlessSession = await createPlaidHeadlessSession(
   LinkTokenConfiguration(
