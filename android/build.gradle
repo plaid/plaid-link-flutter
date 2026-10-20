@@ -4,7 +4,7 @@ group = "com.plaid.plaid_link_flutter"
 version = "1.2.0"
 
 buildscript {
-    ext.kotlin_version = "2.4.20"
+    ext.kotlin_version = "2.4.21"
     repositories {
         google()
         mavenCentral()
