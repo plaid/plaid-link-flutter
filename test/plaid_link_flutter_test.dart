@@ -105,7 +105,7 @@ class FakePlaidLinkFlutterPlatform
   }
 
   @override
-  Future<String?> getSdkVersion() async => '7.2.2';
+  Future<String?> getSdkVersion() async => '7.2.3';
 
   @override
   Future<void> createPlaidLinkSession(String token, int sessionId) async {
