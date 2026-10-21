@@ -4,7 +4,7 @@ import UIKit
 
 @objc(PlaidFlutterPlugin)
 public final class PlaidFlutterPlugin: NSObject {
-  @objc public static let sdkVersion: String = "1.2.0"
+  @objc public static let sdkVersion: String = "1.2.1"
 }
 
 public class PlaidLinkFlutterPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {

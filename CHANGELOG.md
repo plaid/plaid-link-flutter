@@ -1,3 +1,24 @@
+## 1.2.1
+
+Updates both native SDKs. No Dart API changes; upgrading requires no code changes.
+
+Both releases fix defects on the return from a financial institution's OAuth login, so this is
+worth picking up if you support OAuth institutions.
+
+### iOS
+
+Ships [LinkKit 7.2.3](https://github.com/plaid/plaid-link-ios/releases/tag/7.2.3):
+
+- Fixed a crash (`EXC_BAD_ACCESS`) that could occur shortly after the app returned to the foreground while Link was open, such as after OAuth.
+- Fixed the Layer background gradient covering only part of the screen when Link's view changes size after it loads, such as on iPhone Duo or after rotation.
+- Security updates.
+
+### Android
+
+Ships [Plaid Link Android SDK 6.3.1](https://github.com/plaid/plaid-link-android/releases/tag/v6.3.1):
+
+- Fixed a race condition that manifested as a blank white screen after returning from a financial institution's OAuth login.
+
 ## 1.2.0
 
 Updates both native SDKs. No Dart API changes; upgrading requires no code changes.
