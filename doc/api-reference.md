@@ -23,6 +23,8 @@ dart doc
 | `syncFinanceKit(FinanceKitConfiguration config)` | `Future<void>` | Runs iOS FinanceKit sync. Android throws `FinanceKitException`. |
 | `PlaidLink.sdkVersion` | `Future<String?>` | Returns the native Plaid SDK version, not the Flutter package version. |
 | `PlaidLink.onEvent` | `Stream<LinkEvent>` | Process-wide event stream for advanced observers. Prefer per-session callbacks. |
+| `PlaidLink.onRestoredSuccess` | `Stream<LinkSuccess>` | Successes delivered after the Flutter engine restarted while Link was running (Android process death during OAuth). Subscribe at start-up. |
+| `PlaidLink.onRestoredExit` | `Stream<LinkExit>` | Exits delivered after the Flutter engine restarted while Link was running. Subscribe at start-up. |
 
 ## Event delivery and session lifecycle
 
@@ -33,6 +35,17 @@ its listeners alive briefly after success to deliver it. The session then dispos
 itself automatically when `HANDOFF` arrives, or after a short fallback window if it
 never does (so nothing leaks). `onExit` remains an immediate teardown; no `HANDOFF`
 follows an exit.
+
+### Results after a process restart (Android)
+
+Link hands off to the bank's app or browser during OAuth. If Android kills the
+app's process while the user is there, the return recreates the app and the
+native SDK finishes the session, but the Dart callbacks that created it are gone.
+The plugin holds such a result and publishes it on `PlaidLink.onRestoredSuccess`
+or `PlaidLink.onRestoredExit` once a listener attaches; each result is replayed to
+exactly one listener. Results for sessions whose Dart callbacks are still alive
+go to those callbacks and never appear on the restored streams. On iOS the
+restored streams never emit.
 
 ## Configuration Types
 

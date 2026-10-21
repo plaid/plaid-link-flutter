@@ -64,6 +64,10 @@ class PlaidLinkFlutterPlugin :
   private var sessionCreationError: Throwable? = null
   private var embeddedOpenInFlight = false
   private var currentSessionId: Int? = null
+  // A Link result that arrived while no Dart session owned it: the process was
+  // recreated while Link was away at the bank (OAuth), so the Dart listeners that
+  // created the session no longer exist. Held until Dart subscribes.
+  private var pendingRestoredResult: Map<String, Any>? = null
   private var waitingForHandoffSessionId: Int? = null
   private var handoffCleanupRunnable: Runnable? = null
   private val mainHandler = Handler(Looper.getMainLooper())
@@ -97,6 +101,7 @@ class PlaidLinkFlutterPlugin :
 
   override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
     eventSink = events
+    flushPendingRestoredResult()
   }
 
   override fun onCancel(arguments: Any?) {
@@ -134,24 +139,43 @@ class PlaidLinkFlutterPlugin :
     val plaidResult = Plaid.parseResult(Plaid.LINK_REQUEST_CODE, resultCode, data)
     val wasEmbedded = embeddedOpenInFlight
     embeddedOpenInFlight = false
+    val sessionId = currentSessionId
     when (plaidResult) {
       is LinkSuccess ->
         if (wasEmbedded) {
           PlaidEmbeddedResultDispatcher.dispatch(plaidResult)
+        } else if (sessionId == null) {
+          holdRestoredResult("restoredSuccess", plaidResult.toWritableMap())
         } else {
-          sendEvent("success", plaidResult.toWritableMap(), currentSessionId)
-          markSessionSucceeded(currentSessionId)
+          sendEvent("success", plaidResult.toWritableMap(), sessionId)
+          markSessionSucceeded(sessionId)
         }
       is LinkExit ->
         if (wasEmbedded) {
           PlaidEmbeddedResultDispatcher.dispatch(plaidResult)
+        } else if (sessionId == null) {
+          holdRestoredResult("restoredExit", plaidResult.toWritableMap())
         } else {
-          sendEvent("exit", plaidResult.toWritableMap(), currentSessionId)
+          sendEvent("exit", plaidResult.toWritableMap(), sessionId)
           clearActiveSession()
         }
       null -> Unit
     }
     return true
+  }
+
+  private fun holdRestoredResult(type: String, payload: Map<String, Any>) {
+    pendingRestoredResult = mapOf("type" to type, "payload" to payload)
+    flushPendingRestoredResult()
+  }
+
+  private fun flushPendingRestoredResult() {
+    mainHandler.post {
+      val event = pendingRestoredResult ?: return@post
+      val sink = eventSink ?: return@post
+      pendingRestoredResult = null
+      sink.success(event)
+    }
   }
 
   override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:plaid_link_flutter/plaid_link_flutter.dart';
@@ -39,6 +41,83 @@ class ExampleListScreen extends StatefulWidget {
 
 class _ExampleListScreenState extends State<ExampleListScreen> {
   late final Future<String?> _sdkVersion = PlaidLink.sdkVersion;
+  final List<StreamSubscription<Object?>> _restoredSubscriptions =
+      <StreamSubscription<Object?>>[];
+
+  @override
+  void initState() {
+    super.initState();
+    // Subscribe at start-up: on Android a Link session that was away at the
+    // bank for OAuth when the process was killed finishes after the app is
+    // recreated, and its result arrives here rather than in the session's
+    // callbacks, which did not survive the restart.
+    _restoredSubscriptions.add(
+      PlaidLink.onRestoredSuccess.listen((success) {
+        _logCallback(
+          'Link',
+          'onRestoredSuccess publicToken=${success.publicToken} '
+              'institution=${success.metadata.institution?.name} '
+              'accounts=${success.metadata.accounts.length}',
+        );
+        _showRestoredResult(
+          title: 'Success (restored)',
+          rows: [
+            ResultRow('Public token', success.publicToken),
+            ResultRow('Institution', success.metadata.institution?.name ?? ''),
+            ResultRow('Accounts', success.metadata.accounts.length.toString()),
+            ResultRow('Link session ID', success.metadata.linkSessionId),
+          ],
+        );
+      }),
+    );
+    _restoredSubscriptions.add(
+      PlaidLink.onRestoredExit.listen((exit) {
+        _logCallback(
+          'Link',
+          'onRestoredExit status=${exit.metadata.status?.value} '
+              'errorCode=${exit.error?.errorCode}',
+        );
+        _showRestoredResult(
+          title: 'Exit (restored)',
+          rows: [
+            ResultRow('Status', exit.metadata.status?.value ?? ''),
+            ResultRow('Error code', exit.error?.errorCode ?? ''),
+            ResultRow('Error message', exit.error?.errorMessage ?? ''),
+            ResultRow('Link session ID', exit.metadata.linkSessionId),
+          ],
+        );
+      }),
+    );
+  }
+
+  @override
+  void dispose() {
+    for (final subscription in _restoredSubscriptions) {
+      subscription.cancel();
+    }
+    super.dispose();
+  }
+
+  void _showRestoredResult({
+    required String title,
+    required List<ResultRow> rows,
+  }) {
+    if (!mounted) {
+      return;
+    }
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        return ResultSheet(
+          title: title,
+          rows: rows,
+          events: const <LinkEvent>[],
+          onClose: () => Navigator.of(context).pop(),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {

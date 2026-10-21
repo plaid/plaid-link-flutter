@@ -247,6 +247,95 @@ void main() {
       ),
     );
   });
+
+  test('restored results reach restored-result listeners', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockStreamHandler(
+          eventChannel,
+          MockStreamHandler.inline(
+            onListen: (arguments, events) {
+              events.success({
+                'type': 'restoredSuccess',
+                'payload': successPayload('restored-token'),
+              });
+              events.success({
+                'type': 'restoredExit',
+                'payload': {
+                  'error': <String, Object?>{},
+                  'metadata': {
+                    'status': 'requires_credentials',
+                    'institution': '',
+                    'requestId': 'request-id',
+                    'linkSessionId': 'exit-session',
+                    'metadataJson': '{}',
+                  },
+                },
+              });
+            },
+          ),
+        );
+
+    final fresh = MethodChannelPlaidLinkFlutter();
+    await expectLater(
+      fresh.onRestoredSuccess,
+      emits(
+        isA<LinkSuccess>().having(
+          (success) => success.publicToken,
+          'publicToken',
+          'restored-token',
+        ),
+      ),
+    );
+    await expectLater(
+      fresh.onRestoredExit,
+      emits(
+        isA<LinkExit>().having(
+          (exit) => exit.metadata.linkSessionId,
+          'linkSessionId',
+          'exit-session',
+        ),
+      ),
+    );
+  });
+
+  test(
+    'a restored result that arrives before any restored listener is replayed '
+    'to the first one, once',
+    () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockStreamHandler(
+            eventChannel,
+            MockStreamHandler.inline(
+              onListen: (arguments, events) {
+                events.success({
+                  'type': 'restoredSuccess',
+                  'payload': successPayload('restored-token'),
+                });
+              },
+            ),
+          );
+
+      final fresh = MethodChannelPlaidLinkFlutter();
+      // Only a generic event listener is attached when the native side flushes
+      // the held result; a session-scoped listener would have dropped it.
+      final eventSubscription = fresh.onEvent.listen((_) {});
+      await Future<void>.delayed(Duration.zero);
+
+      final received = <LinkSuccess>[];
+      final first = fresh.onRestoredSuccess.listen(received.add);
+      await Future<void>.delayed(Duration.zero);
+      expect(received.map((s) => s.publicToken), ['restored-token']);
+
+      final second = <LinkSuccess>[];
+      final secondSubscription = fresh.onRestoredSuccess.listen(second.add);
+      await Future<void>.delayed(Duration.zero);
+      expect(second, isEmpty);
+
+      await first.cancel();
+      await secondSubscription.cancel();
+      await eventSubscription.cancel();
+    },
+  );
 }
 
 Map<String, Object?> successPayload(String publicToken) {

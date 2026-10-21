@@ -150,6 +150,32 @@ class PlaidLink {
   static Stream<LinkEvent> get onEvent {
     return PlaidLinkFlutterPlatform.instance.onEvent;
   }
+
+  /// Link successes delivered after the Flutter engine was restarted while
+  /// Link was running.
+  ///
+  /// On Android, Link hands off to the bank's app or browser during OAuth, and
+  /// the system may kill the app's process while the user is there. When the
+  /// bank sends the user back, Android recreates the app, the native Link SDK
+  /// finishes the session, and the result reaches the plugin, but the Dart
+  /// `onSuccess` callback that was passed to [createPlaidLinkSession] no
+  /// longer exists because Dart state did not survive the restart. Such
+  /// results are published here instead.
+  ///
+  /// Subscribe during app start-up, before the first frame if possible, so a
+  /// result that arrives with the restarted process is not missed. A result
+  /// that arrives before a listener attaches is held and replayed to the first
+  /// listener. Results for a session whose Dart callbacks are still alive are
+  /// delivered to those callbacks and never appear here.
+  static Stream<LinkSuccess> get onRestoredSuccess {
+    return PlaidLinkFlutterPlatform.instance.onRestoredSuccess;
+  }
+
+  /// Link exits delivered after the Flutter engine was restarted while Link
+  /// was running. See [onRestoredSuccess].
+  static Stream<LinkExit> get onRestoredExit {
+    return PlaidLinkFlutterPlatform.instance.onRestoredExit;
+  }
 }
 
 Future<PlaidLinkSession> createPlaidLinkSession(

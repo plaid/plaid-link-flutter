@@ -33,6 +33,14 @@ abstract class PlaidLinkFlutterPlatform extends PlatformInterface {
     throw UnimplementedError('onLoad has not been implemented.');
   }
 
+  Stream<LinkSuccess> get onRestoredSuccess {
+    throw UnimplementedError('onRestoredSuccess has not been implemented.');
+  }
+
+  Stream<LinkExit> get onRestoredExit {
+    throw UnimplementedError('onRestoredExit has not been implemented.');
+  }
+
   Stream<LinkSuccess> onSuccessForSession(int sessionId) {
     throw UnimplementedError('onSuccessForSession() has not been implemented.');
   }

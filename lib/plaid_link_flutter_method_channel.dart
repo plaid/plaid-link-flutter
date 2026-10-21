@@ -15,6 +15,15 @@ class MethodChannelPlaidLinkFlutter extends PlaidLinkFlutterPlatform {
 
   Stream<Map<Object?, Object?>>? _events;
 
+  /// Restored results (see [onRestoredSuccess]) that arrived while nothing was
+  /// listening for them. The native side only flushes a held result once the
+  /// event channel has a subscriber, which may be a listener for a different
+  /// event kind, so the Dart side keeps the result until a restored-result
+  /// listener attaches and replays it to that first listener.
+  final List<Map<Object?, Object?>> _unclaimedRestoredResults =
+      <Map<Object?, Object?>>[];
+  final Map<String, int> _restoredListeners = <String, int>{};
+
   Stream<Map<Object?, Object?>> get _nativeEvents {
     return _events ??=
         eventChannel.receiveBroadcastStream().map((event) {
@@ -25,8 +34,23 @@ class MethodChannelPlaidLinkFlutter extends PlaidLinkFlutterPlatform {
             return event.cast<Object?, Object?>();
           }
           return <Object?, Object?>{};
-        }).asBroadcastStream();
+        }).map(_holdUnclaimedRestoredResult).asBroadcastStream();
   }
+
+  Map<Object?, Object?> _holdUnclaimedRestoredResult(
+    Map<Object?, Object?> event,
+  ) {
+    final type = event['type'];
+    if (type is String &&
+        _isRestoredType(type) &&
+        (_restoredListeners[type] ?? 0) == 0) {
+      _unclaimedRestoredResults.add(event);
+    }
+    return event;
+  }
+
+  static bool _isRestoredType(String type) =>
+      type == 'restoredSuccess' || type == 'restoredExit';
 
   @override
   Stream<LinkSuccess> get onSuccess {
@@ -52,6 +76,44 @@ class MethodChannelPlaidLinkFlutter extends PlaidLinkFlutterPlatform {
   @override
   Stream<void> get onLoad {
     return _nativeEvents.where((event) => event['type'] == 'load').map((_) {});
+  }
+
+  @override
+  Stream<LinkSuccess> get onRestoredSuccess {
+    return _restoredEvents(
+      'restoredSuccess',
+    ).map((event) => LinkSuccess.fromMap(event.payload()));
+  }
+
+  @override
+  Stream<LinkExit> get onRestoredExit {
+    return _restoredEvents(
+      'restoredExit',
+    ).map((event) => LinkExit.fromMap(event.payload()));
+  }
+
+  /// Live restored results of [type], preceded by any that arrived before this
+  /// listener attached. A result is replayed to exactly one listener.
+  Stream<Map<Object?, Object?>> _restoredEvents(String type) {
+    return Stream<Map<Object?, Object?>>.multi((controller) {
+      _restoredListeners[type] = (_restoredListeners[type] ?? 0) + 1;
+      final subscription = _nativeEvents
+          .where((event) => event['type'] == type)
+          .listen(
+            controller.add,
+            onError: controller.addError,
+            onDone: controller.close,
+          );
+      final unclaimed = _unclaimedRestoredResults
+          .where((event) => event['type'] == type)
+          .toList();
+      _unclaimedRestoredResults.removeWhere((event) => event['type'] == type);
+      unclaimed.forEach(controller.add);
+      controller.onCancel = () {
+        _restoredListeners[type] = (_restoredListeners[type] ?? 1) - 1;
+        return subscription.cancel();
+      };
+    });
   }
 
   @override

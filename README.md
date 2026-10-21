@@ -15,7 +15,7 @@ Add the package:
 
 ```yaml
 dependencies:
-  plaid_link_flutter: ^1.2.0
+  plaid_link_flutter: ^1.3.0
 ```
 
 Then import it:
@@ -196,6 +196,8 @@ The app displays success, exit, and event callback results.
 - Success and exit callbacks are terminal and automatically dispose the session's listeners. Event callbacks are non-terminal. Call `dispose()` on a session to abandon it if it was created but never opened (for example when the owning widget disposes).
 - Embedded Search is mobile-only. Android currently supports one active embedded search view at a time because the native result callback does not expose a per-view result identifier.
 - `PlaidLinkSession.open(fullScreen)` — the `fullScreen` flag applies on iOS (a full-screen modal presentation). On Android it has no effect, because Link opens in its own activity.
+- On Android, the system can kill your app's process while the user is at their bank during OAuth. When the bank returns the user, Android recreates the app and Link finishes the session, but the Dart callbacks passed to `createPlaidLinkSession` no longer exist. Subscribe to `PlaidLink.onRestoredSuccess` and `PlaidLink.onRestoredExit` at app start-up to receive those results; a result that arrives before you subscribe is held and replayed to the first listener. See [Recipes](doc/recipes.md#receiving-a-result-after-the-app-was-killed-during-oauth-android).
+- Flutter's Android app template sets `android:taskAffinity=""` on `MainActivity`. With Link Android SDK 6.x this routes the bank's OAuth redirect into a separate task, so Link cannot resume the session and the user sees Link start over. Remove that attribute from your `MainActivity` (the package default affinity is correct for Link) until a native SDK release handles the redirect task-independently.
 
 ## Errors And Troubleshooting
 

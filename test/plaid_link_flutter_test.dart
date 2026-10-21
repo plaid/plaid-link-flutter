@@ -58,6 +58,17 @@ class FakePlaidLinkFlutterPlatform
   @override
   Stream<void> get onLoad => _loadController.stream.map((_) {});
 
+  final StreamController<LinkSuccess> restoredSuccessController =
+      StreamController<LinkSuccess>.broadcast();
+  final StreamController<LinkExit> restoredExitController =
+      StreamController<LinkExit>.broadcast();
+
+  @override
+  Stream<LinkSuccess> get onRestoredSuccess => restoredSuccessController.stream;
+
+  @override
+  Stream<LinkExit> get onRestoredExit => restoredExitController.stream;
+
   @override
   Stream<LinkSuccess> onSuccessForSession(int sessionId) => _successController
       .stream

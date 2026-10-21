@@ -1,3 +1,34 @@
+## 1.3.0
+
+Fixes Android OAuth returns, both in the native SDK and in how this plugin delivers
+a result when the app was killed while the user was at their bank.
+
+### Dart API
+
+- Added `PlaidLink.onRestoredSuccess` and `PlaidLink.onRestoredExit`. On Android,
+  when the system kills the app during an OAuth hand-off and recreates it on return,
+  the native SDK still finishes the Link session but the `onSuccess`/`onExit`
+  callbacks passed to `createPlaidLinkSession` no longer exist. The plugin now holds
+  that result and publishes it on these process-wide streams once a listener
+  attaches, instead of dropping it. Subscribe at app start-up; see the
+  [recipe](doc/recipes.md#receiving-a-result-after-the-app-was-killed-during-oauth-android).
+
+### Android
+
+Ships [Plaid Link Android SDK 6.3.1](https://github.com/plaid/plaid-link-android/releases/tag/v6.3.1):
+
+- Fixed OAuth returns stalling on a blank Link screen after the bank redirected back
+  to the app. Link now loads the resumed session into a fresh WebView, as 5.x did.
+
+Documentation: Flutter's Android app template sets `android:taskAffinity=""` on
+`MainActivity`, which with Link Android SDK 6.x sends the OAuth redirect into a
+separate task so the session cannot resume. The README, migration guide, and
+recipes now say to remove that attribute. The example app no longer sets it.
+
+### iOS
+
+No changes. Ships LinkKit 7.2.2.
+
 ## 1.2.0
 
 Updates both native SDKs. No Dart API changes; upgrading requires no code changes.

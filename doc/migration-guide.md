@@ -47,7 +47,7 @@ Replace the dependency:
 
 ```yaml
 dependencies:
-  plaid_link_flutter: ^1.2.0
+  plaid_link_flutter: ^1.3.0
 ```
 
 Then update imports:
@@ -298,6 +298,16 @@ The community package exposed `PlaidLink.resumeAfterTermination(...)`. The
 official Flutter SDK does not expose a separate resume method. OAuth redirect
 continuation is handled by the native Plaid SDKs and your app's platform
 configuration.
+
+On Android, if the process is killed while the user is at the bank, the native
+SDK still finishes the session after the app is recreated, but the session's
+Dart callbacks are gone. Subscribe to `PlaidLink.onRestoredSuccess` and
+`PlaidLink.onRestoredExit` at app start-up to receive those results (see
+[Recipes](recipes.md#receiving-a-result-after-the-app-was-killed-during-oauth-android)).
+Also remove `android:taskAffinity=""` from `MainActivity` in your Android
+manifest if your project was generated from a Flutter template from 2024 or
+later; with Link Android SDK 6.x that attribute keeps the OAuth redirect from
+reaching the running session.
 
 For iOS, configure your Plaid redirect URI as a Universal Link in the Plaid
 Dashboard and in your app entitlement setup. For Android, register the app

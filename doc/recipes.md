@@ -215,3 +215,47 @@ Calling `createPlaidLinkSession`, `createPlaidLayerSession`, or
 `createPlaidHeadlessSession` replaces the previous non-embedded callback set.
 After success or exit, the SDK cleans up the active callbacks.
 
+## Receiving A Result After The App Was Killed During OAuth (Android)
+
+During OAuth, Link sends the user to the bank's app or browser and your app goes to
+the background, where Android may kill its process. When the bank returns the
+user, Android recreates your app from saved state, the native Link SDK resumes and
+finishes the session, and the result reaches the plugin. The `onSuccess` and
+`onExit` callbacks you passed when creating the session did not survive the
+restart, so the plugin publishes the result on process-wide streams instead.
+Subscribe to them as early as possible, in the state of your root widget or in
+`main()`:
+
+```dart
+late final StreamSubscription<LinkSuccess> _restoredSuccess;
+late final StreamSubscription<LinkExit> _restoredExit;
+
+@override
+void initState() {
+  super.initState();
+  _restoredSuccess = PlaidLink.onRestoredSuccess.listen((success) {
+    // Exchange success.publicToken exactly as you would in onSuccess.
+  });
+  _restoredExit = PlaidLink.onRestoredExit.listen((exit) {
+    // Treat like onExit.
+  });
+}
+
+@override
+void dispose() {
+  _restoredSuccess.cancel();
+  _restoredExit.cancel();
+  super.dispose();
+}
+```
+
+A result that arrives before a listener attaches is held and replayed to the
+first listener, so subscribing a frame or two after start-up is fine. Results
+for a session whose Dart callbacks are still alive are delivered to those
+callbacks and never appear here.
+
+Also check your `AndroidManifest.xml`: Flutter's app template gives `MainActivity`
+`android:taskAffinity=""`, which with Link Android SDK 6.x sends the bank's
+redirect into a separate task so the session cannot resume at all. Remove that
+attribute from `MainActivity`.
+
