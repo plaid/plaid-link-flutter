@@ -183,8 +183,17 @@ jobs:
     timeout-minutes: 30
 
     steps:
+      # The checkout directory must be named after the pub package. The example
+      # depends on the plugin by relative path, and Flutter names the SwiftPM
+      # symlink for a path dependency after the plugin's root directory, while
+      # SwiftPM takes a path dependency's identity from its directory name. A
+      # checkout named plaid-link-flutter therefore fails to resolve with
+      # "identity 'plaid-link-flutter' doesn't match ... 'plaid_link_flutter'".
+      # Consumers installing from pub.dev are unaffected.
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          path: plaid_link_flutter
 
       - name: Set up Flutter
         uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
@@ -194,21 +203,22 @@ jobs:
           cache: true
 
       - name: Verify LinkKit framework
+        working-directory: plaid_link_flutter
         run: bash tool/validate_linkkit.sh
 
       - name: Select Swift Package Manager integration
         run: flutter config --enable-swift-package-manager
 
       - name: Get example dependencies
-        working-directory: example
+        working-directory: plaid_link_flutter/example
         run: flutter pub get
 
       - name: Build iOS simulator example
-        working-directory: example
+        working-directory: plaid_link_flutter/example
         run: flutter build ios --simulator --no-codesign
 
       - name: Verify the plugin resolved through Swift Package Manager
-        working-directory: example
+        working-directory: plaid_link_flutter/example
         run: |
           manifest=ios/Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage/Package.swift
           if ! grep -q 'plaid_link_flutter' "$manifest"; then
@@ -219,11 +229,11 @@ jobs:
           fi
 
       - name: Verify LinkKit is embedded
-        working-directory: example
+        working-directory: plaid_link_flutter/example
         run: bash ../tool/verify_linkkit_embedded.sh build/ios/iphonesimulator/Runner.app
 
       - name: Run iOS unit tests
-        working-directory: example
+        working-directory: plaid_link_flutter/example
         run: |
           xcodebuild test \
             -workspace ios/Runner.xcworkspace \

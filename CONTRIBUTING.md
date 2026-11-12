@@ -45,6 +45,18 @@ For iOS changes, run the checks against **both** integrations, because the
 plugin supports Swift Package Manager and CocoaPods and CI covers each
 separately. Switch integrations with `flutter config`:
 
+> **Clone this repository into a directory named `plaid_link_flutter` to build
+> the example with Swift Package Manager.** The example depends on the plugin by
+> relative path; Flutter names the SwiftPM symlink for a path dependency after
+> the plugin's root directory, and SwiftPM derives a path dependency's identity
+> from its directory name. The repository's own name, `plaid-link-flutter`,
+> therefore fails to resolve with `identity 'plaid-link-flutter' doesn't match
+> override's identity (directory name) 'plaid_link_flutter'`. This affects only
+> the bundled example; consumers installing from pub.dev are unaffected, and the
+> `iOS (Swift Package Manager)` CI job checks out into a correctly named
+> directory for the same reason.
+
+
 ```sh
 # CocoaPods
 flutter config --no-enable-swift-package-manager
