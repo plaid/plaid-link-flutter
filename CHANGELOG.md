@@ -1,3 +1,39 @@
+## 1.4.0
+
+Adds Swift Package Manager support for iOS. No Dart API changes; upgrading requires no code changes.
+
+Swift Package Manager is the default iOS integration in Flutter 3.44 and later, and CocoaPods is in
+maintenance mode. Until now this plugin shipped only a podspec, so every project depending on it had
+to keep CocoaPods — and Ruby — installed. Both integrations are now supported, and CocoaPods remains
+fully supported for projects that use it, including on Flutter versions below 3.44.
+
+### iOS
+
+- Added `ios/plaid_link_flutter/Package.swift`, and moved the plugin source to
+  `ios/plaid_link_flutter/Sources/plaid_link_flutter/` to match Flutter's Swift Package Manager
+  layout. The podspec reads from that same directory, so there is one copy of the source and one
+  vendored `LinkKit.xcframework` shared by both integrations.
+- The privacy manifest moved to `ios/plaid_link_flutter/Sources/plaid_link_flutter/Resources/` and
+  ships through both integrations.
+- The vendored framework moved from `ios/Frameworks/LinkKit.xcframework` to
+  `ios/plaid_link_flutter/LinkKit.xcframework`, which Swift Package Manager requires: Flutter
+  symlinks the package into the app's ephemeral packages directory and resolves binary target
+  paths relative to that symlink, so the framework has to sit inside the package directory. This
+  affects only the plugin's internal layout, not host apps.
+
+Nothing in the public Dart API or the native module name changed, so `@testable import
+plaid_link_flutter` and existing host-app integrations are unaffected.
+
+### Tooling
+
+- `tool/check_versions.sh` now also verifies the native SDK versions, so the LinkKit and Android
+  pins in `tool/validate_linkkit.sh` and `android/build.gradle` cannot drift from the versions
+  quoted in `README.md` and `doc/migration-guide.md`. It previously checked only this package's
+  own version.
+- Added `tool/verify_linkkit_embedded.sh`, which asserts `LinkKit.framework` is embedded in a built
+  app bundle. A binary target can compile and link while leaving the framework unembedded, which
+  fails only at runtime on a device, so CI now checks the bundle on both integration paths.
+
 ## 1.3.0
 
 Updates both native SDKs and adds a FinanceKit availability check.

@@ -47,7 +47,7 @@ Replace the dependency:
 
 ```yaml
 dependencies:
-  plaid_link_flutter: ^1.3.0
+  plaid_link_flutter: ^1.4.0
 ```
 
 Then update imports:
