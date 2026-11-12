@@ -21,6 +21,7 @@ dart doc
 | `PlaidHeadlessSession.start()` | `Future<void>` | Starts the Headless session. |
 | `PlaidLinkSession.dispose()` (also on Layer/Headless) | `void` | Cancels the session's callbacks. Runs automatically after a terminal exit, or after the terminal `HANDOFF` event that follows success (with a short fallback if `HANDOFF` never arrives); call it to abandon a session created but never opened. |
 | `syncFinanceKit(FinanceKitConfiguration config)` | `Future<void>` | Runs iOS FinanceKit sync. Android throws `FinanceKitException`. |
+| `financeKitStatus()` | `Future<FinanceKitStatus>` | Reports FinanceKit availability without prompting the user. Never throws for an unsupported platform; Android and iOS below 17.4 report `unavailable`. |
 | `PlaidLink.sdkVersion` | `Future<String?>` | Returns the native Plaid SDK version, not the Flutter package version. |
 | `PlaidLink.onEvent` | `Stream<LinkEvent>` | Process-wide event stream for advanced observers. Prefer per-session callbacks. |
 
@@ -196,13 +197,28 @@ SDK values never crash a consumer. Compare with the constant
 | `FinanceKitSyncBehavior.live` | `0` |
 | `FinanceKitSyncBehavior.simulated` | `1` |
 
+### `FinanceKitStatus`
+
+Returned by `financeKitStatus()`. Reports whether a sync can proceed without first
+asking the user for permission.
+
+| Value | Platform code | Meaning |
+| --- | --- | --- |
+| `FinanceKitStatus.unavailable` | `UNAVAILABLE` | No Wallet data on this device, region, or OS version. Always reported on Android and on iOS below 17.4. |
+| `FinanceKitStatus.notDetermined` | `NOT_DETERMINED` | The user has not been asked yet. |
+| `FinanceKitStatus.denied` | `DENIED` | The user declined access. |
+| `FinanceKitStatus.authorized` | `AUTHORIZED` | Access granted; a sync can run. |
+| `FinanceKitStatus.unknown` | Any other code. | Status could not be determined. |
+
 ### `FinanceKitException`
 
-| Field | Type | Nullable |
-| --- | --- | --- |
-| `type` | `FinanceKitErrorType` | No |
-| `code` | `String` | No |
-| `message` | `String` | No |
+| Field | Type | Nullable | Notes |
+| --- | --- | --- | --- |
+| `type` | `FinanceKitErrorType` | No | |
+| `code` | `String` | No | Raw platform code, preserved even when `type` is `unknown`. |
+| `message` | `String` | No | |
+| `syncErrorType` | `String` | Yes | Server-reported error type. Set only for `FinanceKitErrorType.syncFailed`. |
+| `syncErrorCode` | `String` | Yes | Server-reported error code that accompanies `syncErrorType`. |
 
 ### `FinanceKitErrorType`
 
@@ -214,7 +230,16 @@ SDK values never crash a consumer. Compare with the constant
 | `FinanceKitErrorType.permissionAccessError` | `PERMISSION_ACCESS_ERROR` |
 | `FinanceKitErrorType.unsupportedAndroid` | `UNSUPPORTED_ANDROID` |
 | `FinanceKitErrorType.unsupportedIosVersion` | `UNSUPPORTED_IOS_VERSION` |
+| `FinanceKitErrorType.permissionNotRequested` | `PERMISSION_NOT_REQUESTED` |
+| `FinanceKitErrorType.dataUnavailable` | `DATA_UNAVAILABLE` |
+| `FinanceKitErrorType.noAccounts` | `NO_ACCOUNTS` |
+| `FinanceKitErrorType.syncFailed` | `SYNC_FAILED` |
+| `FinanceKitErrorType.channelClosed` | `CHANNEL_CLOSED` |
+| `FinanceKitErrorType.syncTimedOut` | `SYNC_TIMED_OUT` |
 | `FinanceKitErrorType.unknown` | Any other code. |
+
+A sync that Apple completes without sharing any accounts reports `noAccounts`; before
+LinkKit 7.4.0 it completed successfully.
 
 ## Link Errors
 

@@ -278,3 +278,10 @@ Future<PlaidHeadlessSession> createPlaidHeadlessSession(
 Future<void> syncFinanceKit(FinanceKitConfiguration config) {
   return PlaidLinkFlutterPlatform.instance.syncFinanceKit(config);
 }
+
+/// Reports whether FinanceKit can be used on this device, without prompting the
+/// user, so callers can gate UI before calling [syncFinanceKit]. Android and iOS
+/// below 17.4 always report [FinanceKitStatus.unavailable].
+Future<FinanceKitStatus> financeKitStatus() {
+  return PlaidLinkFlutterPlatform.instance.financeKitStatus();
+}

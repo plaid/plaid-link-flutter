@@ -1,3 +1,56 @@
+## 1.3.0
+
+Updates both native SDKs and adds a FinanceKit availability check.
+
+**Behavior change:** a FinanceKit sync that finishes without Apple sharing any accounts now
+throws `FinanceKitException` with `FinanceKitErrorType.noAccounts`, where it previously
+completed successfully. Code that treats a resolved `syncFinanceKit` future as "accounts were
+synced" needs to handle that error.
+
+### Dart
+
+- Added `financeKitStatus()`, which reports whether FinanceKit can be used on this device
+  without prompting the user, so UI can be gated before calling `syncFinanceKit`. Android and
+  iOS below 17.4 report `FinanceKitStatus.unavailable` rather than throwing.
+- Added `FinanceKitErrorType` values for the failures LinkKit 7.4.0 distinguishes:
+  `permissionNotRequested`, `dataUnavailable`, `noAccounts`, `syncFailed`, `channelClosed`, and
+  `syncTimedOut`. These previously arrived as `unknown`.
+- Added `FinanceKitException.syncErrorType` and `.syncErrorCode`, carrying the server-reported
+  detail behind `FinanceKitErrorType.syncFailed`.
+- Added `LinkViewName.institutionLoginInstructions` for the `INSTITUTION_LOGIN_INSTRUCTIONS`
+  view that both platforms now report.
+
+### iOS
+
+Ships [LinkKit 7.4.0](https://github.com/plaid/plaid-link-ios/releases/tag/7.4.0), which also
+picks up [7.3.0](https://github.com/plaid/plaid-link-ios/releases/tag/7.3.0) and
+[7.3.1](https://github.com/plaid/plaid-link-ios/releases/tag/7.3.1). **This raises the build
+requirement to Xcode 16.1 or later.**
+
+- FinanceKit syncs the server ends with no shared accounts now fail with `noAccounts`, and other
+  server-reported failures fail with `syncFailed`, carrying the error type, code, and message.
+- A sync closed by the server, or one that goes an hour without completing, now fails with
+  `channelClosed` or `syncTimedOut`. Previously the completion handler was never called.
+- User-initiated syncs get an iOS background task once the permission prompt is answered, so they
+  can run for about 30 seconds after the user leaves the app, and fail with `syncTimedOut` if iOS
+  is about to suspend the app first.
+- Devices, regions, and OS versions without Wallet data now report `dataUnavailable` instead of a
+  permission error or crash, including iPad running an iPhone app in compatibility mode.
+- A sync with `requestAuthorizationIfNeeded: false` on a device where the user was never asked now
+  fails with `permissionNotRequested`.
+- Leaving Apple's permission sheet without choosing no longer counts as a denial; Link asks again.
+- Added the `INSTITUTION_LOGIN_INSTRUCTIONS` view name.
+
+### Android
+
+Ships [Plaid Link Android SDK 6.4.0](https://github.com/plaid/plaid-link-android/releases/tag/v6.4.0):
+
+- Added the `SELECT_DENYLISTED_INSTITUTION`, `SELECT_FALLBACK_ROUTING_INSTITUTION`, and
+  `SELECT_REMEMBER_ME_DUPLICATE_INSTITUTION` event names and the `INSTITUTION_LOGIN_INSTRUCTIONS`
+  view name. Earlier versions delivered these as `UNKNOWN` with the raw name.
+- Removed the AppCompat dependency, so Compose-only apps no longer need `androidx.appcompat`.
+- Removed the unused `READ_BASIC_PHONE_STATE` permission from the SDK manifest.
+
 ## 1.2.1
 
 Updates both native SDKs. No Dart API changes; upgrading requires no code changes.

@@ -992,6 +992,21 @@ class _FinanceKitScreenState extends State<FinanceKitScreen> {
 
   bool get _hasValidToken => isValidToken(_tokenController.text);
 
+  Future<void> _checkStatus() async {
+    try {
+      final status = await financeKitStatus();
+      setState(() {
+        _state = SessionState.idle;
+        _resultMessage = 'FinanceKit status: ${status.value}';
+      });
+    } catch (error) {
+      setState(() {
+        _state = SessionState.error;
+        _resultMessage = error.toString();
+      });
+    }
+  }
+
   Future<void> _sync() async {
     final token = _tokenController.text.trim();
     if (token.isEmpty) {
@@ -1058,6 +1073,23 @@ class _FinanceKitScreenState extends State<FinanceKitScreen> {
         const SizedBox(height: 16),
         if (_resultMessage != null) ErrorView(message: _resultMessage!),
         const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            onPressed: isLoading ? null : _checkStatus,
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: const Text(
+              'CHECK STATUS',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
         SizedBox(
           width: double.infinity,
           child: FilledButton(

@@ -41,6 +41,8 @@ class FakePlaidLinkFlutterPlatform
   bool startedHeadless = false;
   SubmissionData? submittedData;
   FinanceKitConfiguration? financeKitConfiguration;
+  FinanceKitStatus financeKitStatusResult = FinanceKitStatus.authorized;
+  bool financeKitStatusCalled = false;
   bool failCreateLinkSession = false;
   bool failCreateLayerSession = false;
   bool failCreateHeadlessSession = false;
@@ -157,6 +159,12 @@ class FakePlaidLinkFlutterPlatform
   @override
   Future<void> syncFinanceKit(FinanceKitConfiguration config) async {
     financeKitConfiguration = config;
+  }
+
+  @override
+  Future<FinanceKitStatus> financeKitStatus() async {
+    financeKitStatusCalled = true;
+    return financeKitStatusResult;
   }
 
   void emitSuccess(int sessionId, LinkSuccess success) =>
@@ -625,6 +633,86 @@ void main() {
     });
     expect(exception.type, FinanceKitErrorType.permissionError);
     expect(exception.message, 'Denied');
+  });
+
+  test('financeKitStatus forwards the platform status', () async {
+    final fakePlatform = FakePlaidLinkFlutterPlatform();
+    PlaidLinkFlutterPlatform.instance = fakePlatform;
+    fakePlatform.financeKitStatusResult = FinanceKitStatus.denied;
+
+    expect(await financeKitStatus(), FinanceKitStatus.denied);
+    expect(fakePlatform.financeKitStatusCalled, isTrue);
+
+    await fakePlatform.dispose();
+  });
+
+  test('FinanceKitStatus maps codes and falls back to unknown', () {
+    expect(
+      FinanceKitStatus.fromCode('NOT_DETERMINED'),
+      FinanceKitStatus.notDetermined,
+    );
+    expect(
+      FinanceKitStatus.fromCode('UNAVAILABLE'),
+      FinanceKitStatus.unavailable,
+    );
+    expect(
+      FinanceKitStatus.fromCode('AUTHORIZED'),
+      FinanceKitStatus.authorized,
+    );
+    expect(
+      FinanceKitStatus.fromCode('SOMETHING_NEW'),
+      FinanceKitStatus.unknown,
+    );
+    expect(FinanceKitStatus.fromCode(null), FinanceKitStatus.unknown);
+  });
+
+  test('FinanceKitException maps LinkKit 7.4.0 error codes', () {
+    final noAccounts = FinanceKitException.fromPlatformException(
+      PlatformException(code: 'NO_ACCOUNTS', message: 'No accounts shared'),
+    );
+    final timedOut = FinanceKitException.fromPlatformException(
+      PlatformException(code: 'SYNC_TIMED_OUT', message: 'Timed out'),
+    );
+    final notRequested = FinanceKitException.fromPlatformException(
+      PlatformException(code: 'PERMISSION_NOT_REQUESTED', message: 'Not asked'),
+    );
+    final dataUnavailable = FinanceKitException.fromPlatformException(
+      PlatformException(code: 'DATA_UNAVAILABLE', message: 'No Wallet data'),
+    );
+    final channelClosed = FinanceKitException.fromPlatformException(
+      PlatformException(code: 'CHANNEL_CLOSED', message: 'Closed'),
+    );
+
+    expect(noAccounts.type, FinanceKitErrorType.noAccounts);
+    expect(timedOut.type, FinanceKitErrorType.syncTimedOut);
+    expect(notRequested.type, FinanceKitErrorType.permissionNotRequested);
+    expect(dataUnavailable.type, FinanceKitErrorType.dataUnavailable);
+    expect(channelClosed.type, FinanceKitErrorType.channelClosed);
+  });
+
+  test('FinanceKitException carries syncFailed server detail', () {
+    final syncFailed = FinanceKitException.fromPlatformException(
+      PlatformException(
+        code: 'SYNC_FAILED',
+        message: 'Sync failed',
+        details: {
+          'errorType': 10,
+          'errorCode': 'SYNC_FAILED',
+          'errorMessage': 'Sync failed',
+          'syncErrorType': 'INVALID_REQUEST',
+          'syncErrorCode': 'INVALID_FIELD',
+        },
+      ),
+    );
+    final withoutDetail = FinanceKitException.fromPlatformException(
+      PlatformException(code: 'NO_ACCOUNTS', message: 'No accounts shared'),
+    );
+
+    expect(syncFailed.type, FinanceKitErrorType.syncFailed);
+    expect(syncFailed.syncErrorType, 'INVALID_REQUEST');
+    expect(syncFailed.syncErrorCode, 'INVALID_FIELD');
+    expect(withoutDetail.syncErrorType, isNull);
+    expect(withoutDetail.syncErrorCode, isNull);
   });
 
   test('FinanceKitException maps platform-support error codes', () {

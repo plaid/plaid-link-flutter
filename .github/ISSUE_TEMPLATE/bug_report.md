@@ -20,7 +20,7 @@ instead.
 | Dart version                   | e.g. 3.7.0                                |
 | iOS affected                   | yes / no                                  |
 | iOS version and device         | e.g. iOS 18, iPhone 16 simulator          |
-| LinkKit version                | e.g. 7.2.3, or N/A                        |
+| LinkKit version                | e.g. 7.4.0, or N/A                        |
 | Android affected               | yes / no                                  |
 | Android version and device     | e.g. Android 15, Pixel 8 emulator         |
 | Android Link SDK version       | e.g. 6.3.1, or N/A                        |

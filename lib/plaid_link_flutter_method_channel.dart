@@ -180,6 +180,18 @@ class MethodChannelPlaidLinkFlutter extends PlaidLinkFlutterPlatform {
     }
   }
 
+  @override
+  Future<FinanceKitStatus> financeKitStatus() async {
+    try {
+      final status = await methodChannel.invokeMethod<String>(
+        'financeKitStatus',
+      );
+      return FinanceKitStatus.fromCode(status);
+    } on PlatformException catch (error) {
+      throw FinanceKitException.fromPlatformException(error);
+    }
+  }
+
   Stream<Map<Object?, Object?>> _sessionEvents(String type, int sessionId) {
     return _nativeEvents.where((event) {
       return event['type'] == type && event['sessionId'] == sessionId;

@@ -15,7 +15,7 @@ Add the package:
 
 ```yaml
 dependencies:
-  plaid_link_flutter: ^1.2.1
+  plaid_link_flutter: ^1.3.0
 ```
 
 Then import it:
@@ -48,7 +48,7 @@ cd ios
 pod install
 ```
 
-The plugin vendors LinkKit `7.2.3` at
+The plugin vendors LinkKit `7.4.0` at
 `ios/Frameworks/LinkKit.xcframework`. The framework contains iOS device and
 simulator slices only; Mac Catalyst is not shipped.
 
@@ -134,13 +134,16 @@ final headlessSession = await createPlaidHeadlessSession(
 
 await headlessSession.start();
 
-await syncFinanceKit(FinanceKitConfiguration(token: linkToken));
+// Gate on FinanceKit availability before syncing, without prompting the user.
+if (await financeKitStatus() == FinanceKitStatus.authorized) {
+  await syncFinanceKit(FinanceKitConfiguration(token: linkToken));
+}
 ```
 
 ## Native SDKs
 
-- iOS: LinkKit `7.2.3`, vendored at `ios/Frameworks/LinkKit.xcframework`
-- Android: `com.plaid.link:sdk-core:6.3.1`
+- iOS: LinkKit `7.4.0`, vendored at `ios/Frameworks/LinkKit.xcframework`
+- Android: `com.plaid.link:sdk-core:6.4.0`
 
 The vendored iOS framework intentionally contains only iOS device and simulator slices. The Mac Catalyst slice is not included.
 
@@ -149,6 +152,7 @@ The vendored iOS framework intentionally contains only iOS device and simulator 
 - Flutter `3.29.3+`
 - Dart `3.7+`
 - iOS `15.0+`
+- Xcode `16.1+` (required by LinkKit `7.4.0`)
 - Android `minSdk 26+`
 
 ## Setup Notes

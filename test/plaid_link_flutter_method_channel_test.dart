@@ -16,7 +16,10 @@ void main() {
         .setMockMethodCallHandler(channel, (methodCall) async {
           calls.add(methodCall);
           if (methodCall.method == 'getSdkVersion') {
-            return '7.2.3';
+            return '7.4.0';
+          }
+          if (methodCall.method == 'financeKitStatus') {
+            return 'AUTHORIZED';
           }
           return null;
         });
@@ -31,7 +34,7 @@ void main() {
   });
 
   test('getSdkVersion', () async {
-    expect(await platform.getSdkVersion(), '7.2.3');
+    expect(await platform.getSdkVersion(), '7.4.0');
   });
 
   test('createPlaidLinkSession invokes native method', () async {
@@ -124,6 +127,14 @@ void main() {
       });
     },
   );
+
+  test('financeKitStatus invokes native method and maps the code', () async {
+    final status = await platform.financeKitStatus();
+
+    expect(calls.single.method, 'financeKitStatus');
+    expect(calls.single.arguments, isNull);
+    expect(status, FinanceKitStatus.authorized);
+  });
 
   test(
     'syncFinanceKit throws FinanceKitException from platform errors',
