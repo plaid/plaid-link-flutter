@@ -16,6 +16,9 @@ permissions:
 
 env:
   FLUTTER_VERSION: "3.29.3"
+  # The iOS Swift Package Manager path needs a Flutter that ships SwiftPM support.
+  # FLUTTER_VERSION stays at the floor declared in pubspec.yaml, which predates it.
+  FLUTTER_SPM_VERSION: "3.47.3"
 
 jobs:
   dart:
@@ -127,7 +130,7 @@ jobs:
         run: ./gradlew :plaid_link_flutter:testDebugUnitTest
 
   ios:
-    name: iOS
+    name: iOS (CocoaPods)
     runs-on: macos-15
     timeout-minutes: 30
 
@@ -145,6 +148,9 @@ jobs:
       - name: Verify LinkKit framework
         run: bash tool/validate_linkkit.sh
 
+      - name: Select CocoaPods integration
+        run: flutter config --no-enable-swift-package-manager
+
       - name: Get example dependencies
         working-directory: example
         run: flutter pub get
@@ -156,6 +162,65 @@ jobs:
       - name: Build iOS simulator example
         working-directory: example
         run: flutter build ios --simulator --no-codesign
+
+      - name: Verify LinkKit is embedded
+        working-directory: example
+        run: bash ../tool/verify_linkkit_embedded.sh build/ios/iphonesimulator/Runner.app
+
+      - name: Run iOS unit tests
+        working-directory: example
+        run: |
+          xcodebuild test \
+            -workspace ios/Runner.xcworkspace \
+            -scheme Runner \
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -only-testing:RunnerTests \
+            CODE_SIGNING_ALLOWED=NO
+
+  ios_spm:
+    name: iOS (Swift Package Manager)
+    runs-on: macos-15
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_SPM_VERSION }}
+          cache: true
+
+      - name: Verify LinkKit framework
+        run: bash tool/validate_linkkit.sh
+
+      - name: Select Swift Package Manager integration
+        run: flutter config --enable-swift-package-manager
+
+      - name: Get example dependencies
+        working-directory: example
+        run: flutter pub get
+
+      - name: Build iOS simulator example
+        working-directory: example
+        run: flutter build ios --simulator --no-codesign
+
+      - name: Verify the plugin resolved through Swift Package Manager
+        working-directory: example
+        run: |
+          manifest=ios/Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage/Package.swift
+          if ! grep -q 'plaid_link_flutter' "$manifest"; then
+            echo "plaid_link_flutter did not resolve through Swift Package Manager."
+            echo "It fell back to CocoaPods, so this job is not testing the SwiftPM path."
+            cat "$manifest"
+            exit 1
+          fi
+
+      - name: Verify LinkKit is embedded
+        working-directory: example
+        run: bash ../tool/verify_linkkit_embedded.sh build/ios/iphonesimulator/Runner.app
 
       - name: Run iOS unit tests
         working-directory: example

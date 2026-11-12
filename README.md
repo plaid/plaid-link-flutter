@@ -15,7 +15,7 @@ Add the package:
 
 ```yaml
 dependencies:
-  plaid_link_flutter: ^1.3.0
+  plaid_link_flutter: ^1.4.0
 ```
 
 Then import it:
@@ -48,8 +48,15 @@ cd ios
 pod install
 ```
 
+### Swift Package Manager
+
+The plugin supports both Swift Package Manager and CocoaPods. Swift Package
+Manager is the default integration in Flutter `3.44+` and needs no setup — the
+`pod install` step above is only required when your project uses CocoaPods,
+which remains fully supported.
+
 The plugin vendors LinkKit `7.4.0` at
-`ios/Frameworks/LinkKit.xcframework`. The framework contains iOS device and
+`ios/plaid_link_flutter/LinkKit.xcframework`. The framework contains iOS device and
 simulator slices only; Mac Catalyst is not shipped.
 
 For Identity Verification flows, add `NSCameraUsageDescription` to the host
@@ -142,7 +149,7 @@ if (await financeKitStatus() == FinanceKitStatus.authorized) {
 
 ## Native SDKs
 
-- iOS: LinkKit `7.4.0`, vendored at `ios/Frameworks/LinkKit.xcframework`
+- iOS: LinkKit `7.4.0`, vendored at `ios/plaid_link_flutter/LinkKit.xcframework`
 - Android: `com.plaid.link:sdk-core:6.4.0`
 
 The vendored iOS framework intentionally contains only iOS device and simulator slices. The Mac Catalyst slice is not included.
@@ -153,6 +160,7 @@ The vendored iOS framework intentionally contains only iOS device and simulator 
 - Dart `3.7+`
 - iOS `15.0+`
 - Xcode `16.1+` (required by LinkKit `7.4.0`)
+- Swift Package Manager integration requires Flutter `3.44+`; older versions use CocoaPods
 - Android `minSdk 26+`
 
 ## Setup Notes

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-FRAMEWORK="$ROOT_DIR/ios/Frameworks/LinkKit.xcframework"
+FRAMEWORK="$ROOT_DIR/ios/plaid_link_flutter/LinkKit.xcframework"
 INFO_PLIST="$FRAMEWORK/Info.plist"
 EXPECTED_VERSION="7.4.0"
 EXPECTED_DEVICE_SHA="ac6d62f255067ef9a981b39e4e4ddb7373ece00ee494d224f2d1dd8084d2ad98"
