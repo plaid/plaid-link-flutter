@@ -26,7 +26,7 @@ your widget state, and call the method on that session.
 | Area | `plaid_flutter` | `plaid_link_flutter` |
 | --- | --- | --- |
 | Package import | `package:plaid_flutter/plaid_flutter.dart` | `package:plaid_link_flutter/plaid_link_flutter.dart` |
-| Native SDKs | iOS 6.x, Android 5.x | iOS LinkKit 7.2.3, Android Link SDK 6.3.1 |
+| Native SDKs | iOS 6.x, Android 5.x | iOS LinkKit 7.4.0, Android Link SDK 6.4.0 |
 | Primary API | Global `PlaidLink.create()` and `PlaidLink.open()` | `createPlaidLinkSession()` returns `PlaidLinkSession` |
 | Callback model | Global streams: `PlaidLink.onSuccess`, `PlaidLink.onExit`, `PlaidLink.onEvent`, `PlaidLink.onLoad` | Per-session callbacks passed in the configuration |
 | Link readiness | Wait for create completion or `onLoad` stream | Use `LinkTokenConfiguration.onLoad` |
@@ -47,7 +47,7 @@ Replace the dependency:
 
 ```yaml
 dependencies:
-  plaid_link_flutter: ^1.2.1
+  plaid_link_flutter: ^1.3.0
 ```
 
 Then update imports:

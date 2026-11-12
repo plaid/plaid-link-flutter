@@ -91,6 +91,7 @@ class PlaidLinkFlutterPlugin :
       "startHeadlessSession" -> startHeadlessSession(result)
       "syncFinanceKit" ->
         result.error("UNSUPPORTED_ANDROID", "FinanceKit is only available on iOS", null)
+      "financeKitStatus" -> result.success("UNAVAILABLE")
       else -> result.notImplemented()
     }
   }

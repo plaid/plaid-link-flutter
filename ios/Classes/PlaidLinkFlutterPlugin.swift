@@ -4,7 +4,7 @@ import UIKit
 
 @objc(PlaidFlutterPlugin)
 public final class PlaidFlutterPlugin: NSObject {
-  @objc public static let sdkVersion: String = "1.2.1"
+  @objc public static let sdkVersion: String = "1.3.0"
 }
 
 public class PlaidLinkFlutterPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
@@ -64,6 +64,8 @@ public class PlaidLinkFlutterPlugin: NSObject, FlutterPlugin, FlutterStreamHandl
       startHeadlessSession(result: result)
     case "syncFinanceKit":
       syncFinanceKit(call, result: result)
+    case "financeKitStatus":
+      financeKitStatus(result: result)
     default:
       result(FlutterMethodNotImplemented)
     }
@@ -377,9 +379,23 @@ public class PlaidLinkFlutterPlugin: NSObject, FlutterPlugin, FlutterStreamHandl
         FlutterError(
           code: "UNSUPPORTED_IOS_VERSION",
           message: "FinanceKit requires iOS 17.4 or later",
-          details: ["errorType": 4, "errorCode": "UNSUPPORTED_IOS_VERSION"]
+          details: ["errorType": 5, "errorCode": "UNSUPPORTED_IOS_VERSION"]
         )
       )
+    }
+  }
+
+  private func financeKitStatus(result: @escaping FlutterResult) {
+    if #available(iOS 17.4, *) {
+      PlaidFinanceKit.status { status in
+        DispatchQueue.main.async {
+          result(status.asFinanceKitStatusCode)
+        }
+      }
+    } else {
+      // FinanceKit does not exist before iOS 17.4, which is a form of unavailable
+      // rather than an error, so status stays non-throwing on every platform.
+      result("UNAVAILABLE")
     }
   }
 
@@ -755,10 +771,14 @@ private extension ExitErrorCode {
 
 @available(iOS 17.4, *)
 private extension FinanceKitError {
+  /// Error type ints mirror `FinanceKitErrorType` in lib/src/types.dart. Values are
+  /// append-only so a Dart consumer switching on the raw value keeps working.
   var asFinanceKitErrorDictionary: [String: Any] {
     let errorType: Int
     let errorCode: String
     let errorMessage: String
+    var syncErrorType: String?
+    var syncErrorCode: String?
 
     switch self {
     case .invalidToken:
@@ -778,20 +798,63 @@ private extension FinanceKitError {
       errorCode = "PERMISSION_ACCESS_ERROR"
       errorMessage = localizedDescription
     case .unknown(let error):
-      errorType = 4
+      errorType = 6
       errorCode = "UNKNOWN"
       errorMessage = error.localizedDescription
+    case .permissionNotRequested:
+      errorType = 7
+      errorCode = "PERMISSION_NOT_REQUESTED"
+      errorMessage = localizedDescription
+    case .dataUnavailable:
+      errorType = 8
+      errorCode = "DATA_UNAVAILABLE"
+      errorMessage = localizedDescription
+    case .noAccounts:
+      errorType = 9
+      errorCode = "NO_ACCOUNTS"
+      errorMessage = localizedDescription
+    case .syncFailed(let serverErrorType, let serverErrorCode, _):
+      errorType = 10
+      errorCode = "SYNC_FAILED"
+      errorMessage = localizedDescription
+      syncErrorType = serverErrorType
+      syncErrorCode = serverErrorCode
+    case .channelClosed:
+      errorType = 11
+      errorCode = "CHANNEL_CLOSED"
+      errorMessage = localizedDescription
+    case .syncTimedOut:
+      errorType = 12
+      errorCode = "SYNC_TIMED_OUT"
+      errorMessage = localizedDescription
     @unknown default:
-      errorType = 4
+      errorType = 6
       errorCode = "UNKNOWN"
       errorMessage = localizedDescription
     }
 
-    return [
+    var details: [String: Any] = [
       "errorType": errorType,
       "errorCode": errorCode,
       "errorMessage": errorMessage,
     ]
+    if let syncErrorType { details["syncErrorType"] = syncErrorType }
+    if let syncErrorCode { details["syncErrorCode"] = syncErrorCode }
+    return details
+  }
+}
+
+@available(iOS 17.4, *)
+private extension PlaidFinanceKit.Status {
+  var asFinanceKitStatusCode: String {
+    switch self {
+    case .unavailable: return "UNAVAILABLE"
+    case .notDetermined: return "NOT_DETERMINED"
+    case .denied: return "DENIED"
+    case .authorized: return "AUTHORIZED"
+    case .unknown: return "UNKNOWN"
+    @unknown default: return "UNKNOWN"
+    }
   }
 }
 

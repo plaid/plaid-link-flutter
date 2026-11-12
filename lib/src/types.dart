@@ -174,6 +174,9 @@ final class LinkViewName extends _WireValue {
   static const instantMicrodepositVerification = LinkViewName(
     'INSTANT_MICRODEPOSIT_VERIFICATION',
   );
+  static const institutionLoginInstructions = LinkViewName(
+    'INSTITUTION_LOGIN_INSTRUCTIONS',
+  );
   static const kycCheck = LinkViewName('KYC_CHECK');
   static const loading = LinkViewName('LOADING');
   static const matchedConsent = LinkViewName('MATCHED_CONSENT');
@@ -575,7 +578,13 @@ enum FinanceKitErrorType {
   permissionAccessError(3),
   unsupportedAndroid(4),
   unsupportedIosVersion(5),
-  unknown(6);
+  unknown(6),
+  permissionNotRequested(7),
+  dataUnavailable(8),
+  noAccounts(9),
+  syncFailed(10),
+  channelClosed(11),
+  syncTimedOut(12);
 
   const FinanceKitErrorType(this.value);
 
@@ -587,6 +596,12 @@ enum FinanceKitErrorType {
       'PERMISSION_ACCESS_ERROR' => FinanceKitErrorType.permissionAccessError,
       'UNSUPPORTED_ANDROID' => FinanceKitErrorType.unsupportedAndroid,
       'UNSUPPORTED_IOS_VERSION' => FinanceKitErrorType.unsupportedIosVersion,
+      'PERMISSION_NOT_REQUESTED' => FinanceKitErrorType.permissionNotRequested,
+      'DATA_UNAVAILABLE' => FinanceKitErrorType.dataUnavailable,
+      'NO_ACCOUNTS' => FinanceKitErrorType.noAccounts,
+      'SYNC_FAILED' => FinanceKitErrorType.syncFailed,
+      'CHANNEL_CLOSED' => FinanceKitErrorType.channelClosed,
+      'SYNC_TIMED_OUT' => FinanceKitErrorType.syncTimedOut,
       _ => FinanceKitErrorType.unknown,
     };
   }
@@ -594,25 +609,62 @@ enum FinanceKitErrorType {
   final int value;
 }
 
+/// Whether FinanceKit can be used on this device, reported without prompting
+/// the user. Android and iOS below 17.4 always report [unavailable].
+enum FinanceKitStatus {
+  unavailable('UNAVAILABLE'),
+  notDetermined('NOT_DETERMINED'),
+  denied('DENIED'),
+  authorized('AUTHORIZED'),
+  unknown('UNKNOWN');
+
+  const FinanceKitStatus(this.value);
+
+  factory FinanceKitStatus.fromCode(String? code) {
+    return switch (code) {
+      'UNAVAILABLE' => FinanceKitStatus.unavailable,
+      'NOT_DETERMINED' => FinanceKitStatus.notDetermined,
+      'DENIED' => FinanceKitStatus.denied,
+      'AUTHORIZED' => FinanceKitStatus.authorized,
+      _ => FinanceKitStatus.unknown,
+    };
+  }
+
+  final String value;
+}
+
 class FinanceKitException implements Exception {
   const FinanceKitException({
     required this.type,
     required this.code,
     required this.message,
+    this.syncErrorType,
+    this.syncErrorCode,
   });
 
   factory FinanceKitException.fromPlatformException(dynamic error) {
     final code = error.code?.toString() ?? 'UNKNOWN';
+    final details = error.details;
+    final detailMap = details is Map ? details : const <Object?, Object?>{};
     return FinanceKitException(
       type: FinanceKitErrorType.fromCode(code),
       code: code,
       message: error.message?.toString() ?? 'FinanceKit sync failed.',
+      syncErrorType: detailMap['syncErrorType']?.toString(),
+      syncErrorCode: detailMap['syncErrorCode']?.toString(),
     );
   }
 
   final FinanceKitErrorType type;
   final String code;
   final String message;
+
+  /// Plaid-side error type for [FinanceKitErrorType.syncFailed], which reports a
+  /// failure the server raised while finishing the sync. Null for every other type.
+  final String? syncErrorType;
+
+  /// Plaid-side error code that accompanies [syncErrorType].
+  final String? syncErrorCode;
 
   @override
   String toString() => 'FinanceKitException($code): $message';

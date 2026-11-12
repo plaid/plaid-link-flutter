@@ -110,4 +110,8 @@ abstract class PlaidLinkFlutterPlatform extends PlatformInterface {
   Future<void> syncFinanceKit(FinanceKitConfiguration config) {
     throw UnimplementedError('syncFinanceKit() has not been implemented.');
   }
+
+  Future<FinanceKitStatus> financeKitStatus() {
+    throw UnimplementedError('financeKitStatus() has not been implemented.');
+  }
 }
