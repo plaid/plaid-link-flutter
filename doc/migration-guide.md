@@ -19,6 +19,7 @@ your widget state, and call the method on that session.
 - [Embedded Search](#embedded-search)
 - [FinanceKit](#financekit)
 - [OAuth and redirect handling](#oauth-and-redirect-handling)
+- [Close handling](#close-handling)
 - [Migration checklist](#migration-checklist)
 
 ## What Changed
@@ -124,7 +125,8 @@ Future<void> openLink() async {
 }
 ```
 
-Use `open(true)` if you want to request fullscreen presentation:
+Use `open(true)` if you want to request fullscreen presentation on iOS. On
+Android, the flag has no effect.
 
 ```dart
 await _linkSession?.open(true);
@@ -163,8 +165,10 @@ event.name
 event.eventName
 ```
 
-Success and exit are terminal callbacks. After either fires, the SDK cleans up
-the active non-embedded session listeners. Event callbacks are non-terminal.
+Exit is a terminal callback. After it fires, the SDK cleans up the active
+non-embedded session listeners. After success, the SDK keeps the listeners until
+the `HANDOFF` event arrives, so you still receive `HANDOFF` in `onEvent`. Event
+callbacks are otherwise non-terminal.
 
 The SDK supports one active non-embedded callback set at a time. Creating a new
 Link, Layer, or Headless session replaces the previous non-embedded callbacks.
@@ -172,7 +176,9 @@ Link, Layer, or Headless session replaces the previous non-embedded callbacks.
 ## Layer
 
 Layer now has its own configuration and session type. Use a Layer-compatible
-link token; a regular Link token is not interchangeable.
+link token, created with `/session/token/create`; a regular Link token is not
+interchangeable. Submit the user's phone number, then open Layer when you
+receive `LAYER_READY`:
 
 ```dart
 PlaidLayerSession? _layerSession;
@@ -188,26 +194,27 @@ Future<void> createLayerSession(String layerToken) async {
         print(exit.error?.errorMessage);
       },
       onEvent: (event) {
-        print(event.eventName);
+        if (event.eventName == LinkEventName.layerReady) {
+          _layerSession?.open();
+        }
       },
     ),
   );
 }
 
-Future<void> submitLayerData() async {
+Future<void> submitPhoneNumber(String phoneNumber) async {
   await _layerSession?.submit(
-    const SubmissionData(
-      phoneNumber: '+15551234567',
-      dateOfBirth: '1990-01-31',
+    SubmissionData(
+      phoneNumber: phoneNumber,
       params: <String, String>{'flow': 'signup'},
     ),
   );
 }
-
-Future<void> openLayer() async {
-  await _layerSession?.open();
-}
 ```
+
+If you receive `LAYER_NOT_AVAILABLE`, you can submit the user's date of birth in
+a second `submit` call. For details, see the
+[Layer docs](https://plaid.com/docs/layer/).
 
 ## Headless Link
 
@@ -272,8 +279,8 @@ not expose a per-view result identifier.
 
 ## FinanceKit
 
-FinanceKit is available on iOS only. Android returns a FinanceKit unsupported
-error.
+FinanceKit is available on iOS 17.4 and later only. On Android, `syncFinanceKit`
+will throw a `FinanceKitException` with the code `UNSUPPORTED_ANDROID`.
 
 ```dart
 try {
@@ -325,5 +332,6 @@ native UI and handle `onExit`.
   Headless.
 - Use `PlaidEmbeddedSearchView` for Embedded Search.
 - Gate FinanceKit behind iOS checks in your app code.
+- Remove calls to `PlaidLink.resumeAfterTermination()` and `PlaidLink.close()`.
 - Confirm your backend creates the correct link token type for each flow.
 - Re-test OAuth redirects using your app's production redirect URI setup.
