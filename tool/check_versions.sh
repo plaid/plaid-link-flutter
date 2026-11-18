@@ -4,7 +4,8 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PUBSPEC="$ROOT_DIR/pubspec.yaml"
 PODSPEC="$ROOT_DIR/ios/plaid_link_flutter.podspec"
-IOS_PLUGIN="$ROOT_DIR/ios/Classes/PlaidLinkFlutterPlugin.swift"
+IOS_PLUGIN="$ROOT_DIR/ios/plaid_link_flutter/Sources/plaid_link_flutter/PlaidLinkFlutterPlugin.swift"
+VALIDATE_LINKKIT="$ROOT_DIR/tool/validate_linkkit.sh"
 IOS_TEST="$ROOT_DIR/example/ios/RunnerTests/RunnerTests.swift"
 IOS_PODFILE_LOCK="$ROOT_DIR/example/ios/Podfile.lock"
 ANDROID_BUILD_GRADLE="$ROOT_DIR/android/build.gradle"
@@ -63,3 +64,46 @@ if [[ "$mismatch" -ne 0 ]]; then
 fi
 
 echo "All SDK versions match: $pubspec_version"
+
+# The native SDK versions live in the build files and are quoted again in the docs.
+# Nothing else keeps those copies honest, so compare each set against its build file.
+linkkit_pinned=$(sed -nE 's/^EXPECTED_VERSION="([^"]+)".*/\1/p' "$VALIDATE_LINKKIT")
+linkkit_readme_vendored=$(sed -nE 's/.*vendors LinkKit `([^`]+)`.*/\1/p' "$README" | head -1)
+linkkit_readme_list=$(sed -nE 's/^- iOS: LinkKit `([^`]+)`.*/\1/p' "$README" | head -1)
+linkkit_migration=$(sed -nE 's/.*iOS LinkKit ([0-9][^,]*),.*/\1/p' "$MIGRATION_GUIDE" | head -1)
+
+android_pinned=$(sed -nE 's/.*com\.plaid\.link:sdk-core:([^")]+)".*/\1/p' "$ANDROID_BUILD_GRADLE" | head -1)
+android_readme=$(sed -nE 's/^- Android: `com\.plaid\.link:sdk-core:([^`]+)`.*/\1/p' "$README" | head -1)
+android_migration=$(sed -nE 's/.*Android Link SDK ([0-9][^ |]*).*/\1/p' "$MIGRATION_GUIDE" | head -1)
+
+if [[ -z "$linkkit_pinned" || -z "$linkkit_readme_vendored" || -z "$linkkit_readme_list" ||
+      -z "$linkkit_migration" || -z "$android_pinned" || -z "$android_readme" ||
+      -z "$android_migration" ]]; then
+  echo "Failed to parse one or more native SDK versions:"
+  echo "linkkit: pinned=$linkkit_pinned readme_vendored=$linkkit_readme_vendored readme_list=$linkkit_readme_list migration=$linkkit_migration"
+  echo "android: pinned=$android_pinned readme=$android_readme migration=$android_migration"
+  exit 1
+fi
+
+native_mismatch=0
+check_native() {
+  local label="$1"
+  local value="$2"
+  local expected="$3"
+  if [[ "$value" != "$expected" ]]; then
+    echo "Native version mismatch: $label = $value (expected $expected)"
+    native_mismatch=1
+  fi
+}
+
+check_native "README.md vendored LinkKit" "$linkkit_readme_vendored" "$linkkit_pinned"
+check_native "README.md native SDK list (iOS)" "$linkkit_readme_list" "$linkkit_pinned"
+check_native "doc/migration-guide.md LinkKit" "$linkkit_migration" "$linkkit_pinned"
+check_native "README.md native SDK list (Android)" "$android_readme" "$android_pinned"
+check_native "doc/migration-guide.md Android Link SDK" "$android_migration" "$android_pinned"
+
+if [[ "$native_mismatch" -ne 0 ]]; then
+  exit 1
+fi
+
+echo "Native SDK versions match: LinkKit $linkkit_pinned, Android $android_pinned"
